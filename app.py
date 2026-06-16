@@ -5,7 +5,6 @@ from datetime import date, timedelta
 import os
 import uuid
 import zipfile
-import shutil
 from io import BytesIO
 from supabase import create_client
 
@@ -14,309 +13,25 @@ try:
 except Exception:
     genai = None
 
-st.set_page_config(page_title="LIFE OS", page_icon="✅", layout="wide")
-
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ============================================================
-# DISEÑO / ESTILO VISUAL
+# CONFIG
 # ============================================================
 
+st.set_page_config(
+    page_title="LIFE OS",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-def aplicar_estilo():
-    st.markdown(
-        """
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-        html, body, [class*="css"] {
-            font-family: 'Inter', sans-serif;
-        }
-
-        .stApp {
-            background:
-                radial-gradient(circle at top left, rgba(56, 189, 248, 0.20), transparent 28%),
-                radial-gradient(circle at top right, rgba(168, 85, 247, 0.18), transparent 26%),
-                linear-gradient(135deg, #0f172a 0%, #111827 45%, #020617 100%);
-            color: #e5e7eb;
-        }
-
-        section[data-testid="stSidebar"] {
-            background: rgba(15, 23, 42, 0.92);
-            border-right: 1px solid rgba(148, 163, 184, 0.18);
-        }
-
-        section[data-testid="stSidebar"] * {
-            color: #e5e7eb !important;
-        }
-
-        .block-container {
-            padding-top: 2rem;
-            padding-bottom: 3rem;
-            max-width: 1500px;
-        }
-
-        h1 {
-            font-weight: 800 !important;
-            letter-spacing: -0.04em;
-            color: #f8fafc !important;
-        }
-
-        h2, h3 {
-            color: #f8fafc !important;
-            letter-spacing: -0.02em;
-        }
-
-        p, span, div {
-            color: #dbeafe;
-        }
-
-        [data-testid="stMetric"] {
-            background: linear-gradient(145deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.86));
-            border: 1px solid rgba(148, 163, 184, 0.22);
-            border-radius: 22px;
-            padding: 18px 18px;
-            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
-        }
-
-        [data-testid="stMetricLabel"] p {
-            color: #93c5fd !important;
-            font-weight: 600;
-        }
-
-        [data-testid="stMetricValue"] {
-            color: #f8fafc !important;
-            font-weight: 800;
-        }
-
-        div[data-testid="stTabs"] button {
-            background: rgba(15, 23, 42, 0.55);
-            border-radius: 999px;
-            margin-right: 4px;
-            color: #cbd5e1;
-            border: 1px solid rgba(148, 163, 184, 0.12);
-        }
-
-        div[data-testid="stTabs"] button[aria-selected="true"] {
-            background: linear-gradient(90deg, #2563eb, #7c3aed);
-            color: white !important;
-            border: 1px solid rgba(255,255,255,0.18);
-        }
-
-        .stButton > button, .stDownloadButton > button {
-            border-radius: 14px;
-            border: 1px solid rgba(96, 165, 250, 0.35);
-            background: linear-gradient(90deg, #2563eb, #7c3aed);
-            color: white;
-            font-weight: 700;
-            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.25);
-        }
-
-        .stButton > button:hover, .stDownloadButton > button:hover {
-            border: 1px solid rgba(255,255,255,0.5);
-            filter: brightness(1.08);
-        }
-
-        input, textarea, select {
-            border-radius: 14px !important;
-        }
-
-        [data-testid="stDataFrame"] {
-            border-radius: 18px;
-            overflow: hidden;
-            border: 1px solid rgba(148, 163, 184, 0.18);
-        }
-
-        div[data-testid="stExpander"] {
-            background: rgba(15, 23, 42, 0.60);
-            border: 1px solid rgba(148, 163, 184, 0.18);
-            border-radius: 18px;
-        }
-
-        .life-hero {
-            padding: 28px 30px;
-            border-radius: 30px;
-            border: 1px solid rgba(148, 163, 184, 0.20);
-            background:
-                linear-gradient(135deg, rgba(37, 99, 235, 0.28), rgba(124, 58, 237, 0.23)),
-                rgba(15, 23, 42, 0.68);
-            box-shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
-            margin-bottom: 24px;
-        }
-
-        .life-hero h1 {
-            margin: 0;
-            font-size: 3.1rem;
-            line-height: 1.05;
-        }
-
-        .life-hero p {
-            color: #cbd5e1;
-            font-size: 1.05rem;
-            margin-top: 12px;
-            margin-bottom: 0;
-        }
-
-        .glass-card {
-            padding: 20px 22px;
-            border-radius: 24px;
-            background: rgba(15, 23, 42, 0.72);
-            border: 1px solid rgba(148, 163, 184, 0.20);
-            box-shadow: 0 20px 55px rgba(0,0,0,0.22);
-            margin-bottom: 18px;
-        }
-
-        .section-title {
-            font-size: 1.35rem;
-            font-weight: 800;
-            color: #f8fafc;
-            margin-bottom: 8px;
-        }
-
-        .muted {
-            color: #94a3b8;
-            font-size: 0.95rem;
-        }
-
-        .pill {
-            display: inline-block;
-            padding: 7px 12px;
-            border-radius: 999px;
-            font-weight: 700;
-            font-size: 0.82rem;
-            margin: 2px 4px 2px 0;
-            background: rgba(59,130,246,0.18);
-            border: 1px solid rgba(96,165,250,0.28);
-            color: #bfdbfe;
-        }
-
-        .alert-card {
-            padding: 14px 16px;
-            border-radius: 18px;
-            background: rgba(30, 41, 59, 0.82);
-            border: 1px solid rgba(148, 163, 184, 0.18);
-            margin-bottom: 10px;
-        }
-
-        .alert-card strong {
-            color: #f8fafc;
-        }
-
-        footer {visibility: hidden;}
-        #MainMenu {visibility: hidden;}
-        header {visibility: hidden;}
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def hero(titulo, subtitulo="Tu centro personal sincronizado entre móvil y PC."):
-    st.markdown(
-        f"""
-        <div class="life-hero">
-            <h1>{titulo}</h1>
-            <p>{subtitulo}</p>
-            <div style="margin-top:16px;">
-                <span class="pill">☁️ Supabase</span>
-                <span class="pill">🔐 Login real</span>
-                <span class="pill">📱 Móvil + PC</span>
-                <span class="pill">🤖 IA</span>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def card_inicio(titulo, texto=""):
-    st.markdown(
-        f"""
-        <div class="glass-card">
-            <div class="section-title">{titulo}</div>
-            <div class="muted">{texto}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-aplicar_estilo()
-
-
-APP_NAME = "✅ LIFE OS"
+APP_NAME = "LIFE OS"
 BASE_DATA_DIR = "data"
 os.makedirs(BASE_DATA_DIR, exist_ok=True)
 
-
-# ============================================================
-# USUARIOS / DATOS
-# ============================================================
-
-
-def slug(texto):
-    texto = str(texto).strip().lower()
-    permitido = "abcdefghijklmnopqrstuvwxyz0123456789_-"
-    texto = texto.replace(" ", "_")
-    return "".join(c for c in texto if c in permitido) or "usuario"
-
-
-def usuarios_disponibles():
-    usuarios = [
-        d
-        for d in os.listdir(BASE_DATA_DIR)
-        if os.path.isdir(os.path.join(BASE_DATA_DIR, d))
-    ]
-    if not usuarios:
-        os.makedirs(os.path.join(BASE_DATA_DIR, "pablo"), exist_ok=True)
-        usuarios = ["pablo"]
-    return sorted(usuarios)
-
-
-st.sidebar.title(APP_NAME)
-st.sidebar.caption("Centro personal multiusuario")
-
-usuarios = usuarios_disponibles()
-usuario_actual = st.sidebar.selectbox("Usuario", usuarios, index=0)
-
-nuevo_usuario = st.sidebar.text_input("Crear nuevo usuario")
-if st.sidebar.button("Crear usuario") and nuevo_usuario.strip():
-    nuevo = slug(nuevo_usuario)
-    os.makedirs(os.path.join(BASE_DATA_DIR, nuevo), exist_ok=True)
-    st.session_state["usuario_actual"] = nuevo
-    st.rerun()
-
-if "usuario_actual" in st.session_state:
-    usuario_actual = st.session_state["usuario_actual"]
-
-USER_DIR = os.path.join(BASE_DATA_DIR, usuario_actual)
-FILES_DIR = os.path.join(USER_DIR, "archivos")
-os.makedirs(USER_DIR, exist_ok=True)
-os.makedirs(FILES_DIR, exist_ok=True)
-
-st.sidebar.success(f"Usuario activo: {usuario_actual}")
-
-PATHS = {
-    "tareas": os.path.join(USER_DIR, "tareas.csv"),
-    "finanzas": os.path.join(USER_DIR, "finanzas.csv"),
-    "wishlist": os.path.join(USER_DIR, "wishlist.csv"),
-    "objetivos": os.path.join(USER_DIR, "objetivos.csv"),
-    "proyectos": os.path.join(USER_DIR, "proyectos.csv"),
-    "notas": os.path.join(USER_DIR, "notas.csv"),
-    "calendario": os.path.join(USER_DIR, "calendario.csv"),
-    "habitos": os.path.join(USER_DIR, "habitos.csv"),
-    "habitos_log": os.path.join(USER_DIR, "habitos_log.csv"),
-    "compras": os.path.join(USER_DIR, "compras.csv"),
-    "suscripciones": os.path.join(USER_DIR, "suscripciones.csv"),
-    "universidad": os.path.join(USER_DIR, "universidad.csv"),
-    "viajes": os.path.join(USER_DIR, "viajes.csv"),
-    "presupuestos": os.path.join(USER_DIR, "presupuestos.csv"),
-    "archivos": os.path.join(USER_DIR, "archivos.csv"),
-    "config": os.path.join(USER_DIR, "config.csv"),
-}
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 COLUMNAS = {
     "tareas": [
@@ -350,57 +65,472 @@ COLUMNAS = {
     "viajes": ["id", "viaje", "tipo", "descripcion", "fecha", "coste", "estado"],
     "presupuestos": ["id", "categoria", "limite_mensual"],
     "archivos": ["id", "fecha", "nombre", "categoria", "vinculo", "ruta"],
-    "config": ["clave", "valor"],
+    "config": ["id", "clave", "valor"],
 }
+
+DATE_COLS = ["fecha", "fecha_limite"]
+NUM_COLS = ["cantidad", "precio", "coste", "progreso", "limite_mensual", "dia_cobro"]
+BOOL_COLS = ["completada", "comprado", "completado"]
+
+
+# ============================================================
+# STYLE
+# ============================================================
+
+
+def inject_css():
+    st.markdown(
+        """
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+        html, body, [class*="css"] {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .stApp {
+            background:
+                radial-gradient(circle at 10% 0%, rgba(59, 130, 246, 0.22), transparent 32%),
+                radial-gradient(circle at 92% 5%, rgba(168, 85, 247, 0.18), transparent 28%),
+                radial-gradient(circle at 55% 95%, rgba(20, 184, 166, 0.12), transparent 24%),
+                #070a12;
+            color: #ecfdf5;
+        }
+
+        header, footer, #MainMenu {
+            visibility: hidden;
+        }
+
+        .block-container {
+            max-width: 1500px;
+            padding-top: 1.4rem;
+            padding-bottom: 3rem;
+        }
+
+        section[data-testid="stSidebar"] {
+            background: rgba(8, 13, 25, 0.86);
+            backdrop-filter: blur(22px);
+            border-right: 1px solid rgba(148, 163, 184, 0.16);
+        }
+
+        section[data-testid="stSidebar"] * {
+            color: #e5e7eb !important;
+        }
+
+        h1, h2, h3 {
+            letter-spacing: -0.045em;
+            color: #f8fafc !important;
+        }
+
+        .hero {
+            padding: 30px 32px;
+            border-radius: 34px;
+            border: 1px solid rgba(148, 163, 184, .20);
+            background:
+                linear-gradient(135deg, rgba(37, 99, 235, .25), rgba(124, 58, 237, .18)),
+                rgba(15, 23, 42, .62);
+            box-shadow: 0 30px 90px rgba(0,0,0,.32);
+            margin-bottom: 22px;
+        }
+
+        .hero-title {
+            font-size: 3.2rem;
+            line-height: 1.02;
+            font-weight: 900;
+            color: #ffffff;
+            margin: 0;
+        }
+
+        .hero-subtitle {
+            color: #cbd5e1;
+            font-size: 1.06rem;
+            margin-top: 10px;
+            max-width: 800px;
+        }
+
+        .glass {
+            padding: 22px;
+            border-radius: 26px;
+            background: rgba(15, 23, 42, .70);
+            border: 1px solid rgba(148, 163, 184, .18);
+            box-shadow: 0 18px 60px rgba(0,0,0,.26);
+            margin-bottom: 18px;
+        }
+
+        .mini-card {
+            padding: 18px 18px;
+            border-radius: 24px;
+            background: linear-gradient(145deg, rgba(30,41,59,.90), rgba(15,23,42,.74));
+            border: 1px solid rgba(148,163,184,.18);
+            box-shadow: 0 18px 48px rgba(0,0,0,.22);
+            min-height: 120px;
+        }
+
+        .mini-label {
+            font-size: .84rem;
+            color: #93c5fd;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .mini-value {
+            font-size: 2rem;
+            color: #f8fafc;
+            font-weight: 900;
+            letter-spacing: -.04em;
+        }
+
+        .mini-caption {
+            color: #94a3b8;
+            font-size: .86rem;
+            margin-top: 5px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: .82rem;
+            margin: 3px 5px 3px 0;
+            color: #dbeafe;
+            background: rgba(37, 99, 235, .18);
+            border: 1px solid rgba(96, 165, 250, .30);
+        }
+
+        .section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 18px 20px;
+            margin: 10px 0 18px 0;
+            border-radius: 24px;
+            border: 1px solid rgba(148, 163, 184, .16);
+            background: rgba(15,23,42,.62);
+        }
+
+        .section-head-title {
+            font-size: 1.55rem;
+            font-weight: 900;
+            color: #f8fafc;
+            margin: 0;
+        }
+
+        .section-head-sub {
+            color: #94a3b8;
+            margin-top: 4px;
+            font-size: .95rem;
+        }
+
+        .task-row {
+            padding: 15px 16px;
+            border-radius: 20px;
+            background: rgba(15, 23, 42, .62);
+            border: 1px solid rgba(148, 163, 184, .14);
+            margin-bottom: 10px;
+        }
+
+        .alert {
+            padding: 14px 16px;
+            border-radius: 20px;
+            background: rgba(15, 23, 42, .75);
+            border: 1px solid rgba(148, 163, 184, .18);
+            margin-bottom: 10px;
+        }
+
+        .alert strong {
+            color: #f8fafc;
+        }
+
+        [data-testid="stMetric"] {
+            background: linear-gradient(145deg, rgba(30, 41, 59, .92), rgba(15, 23, 42, .75));
+            border: 1px solid rgba(148, 163, 184, .20);
+            border-radius: 24px;
+            padding: 18px;
+            box-shadow: 0 18px 55px rgba(0,0,0,.26);
+        }
+
+        [data-testid="stMetricLabel"] p {
+            color: #93c5fd !important;
+            font-weight: 800;
+        }
+
+        [data-testid="stMetricValue"] {
+            color: #f8fafc !important;
+            font-weight: 900;
+        }
+
+        .stButton > button, .stDownloadButton > button {
+            border-radius: 16px;
+            border: 1px solid rgba(96, 165, 250, .36);
+            background: linear-gradient(90deg, #2563eb, #7c3aed);
+            color: white;
+            font-weight: 800;
+            box-shadow: 0 14px 34px rgba(37, 99, 235, .24);
+        }
+
+        .stButton > button:hover, .stDownloadButton > button:hover {
+            filter: brightness(1.12);
+            border-color: rgba(255,255,255,.58);
+        }
+
+        div[data-testid="stRadio"] label {
+            background: rgba(15, 23, 42, .70);
+            border: 1px solid rgba(148, 163, 184, .12);
+            border-radius: 999px;
+            padding: 6px 12px;
+            margin-right: 4px;
+        }
+
+        div[data-testid="stExpander"] {
+            background: rgba(15, 23, 42, .62);
+            border: 1px solid rgba(148, 163, 184, .16);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        [data-testid="stDataFrame"] {
+            border-radius: 22px;
+            overflow: hidden;
+            border: 1px solid rgba(148, 163, 184, .15);
+        }
+
+        input, textarea {
+            border-radius: 15px !important;
+        }
+
+        .sidebar-brand {
+            padding: 18px 16px;
+            border-radius: 26px;
+            background:
+                linear-gradient(135deg, rgba(37, 99, 235, .26), rgba(124, 58, 237, .18)),
+                rgba(15,23,42,.78);
+            border: 1px solid rgba(148, 163, 184, .18);
+            margin-bottom: 14px;
+        }
+
+        .sidebar-brand-title {
+            color: #ffffff;
+            font-size: 1.65rem;
+            font-weight: 950;
+            letter-spacing: -.06em;
+        }
+
+        .sidebar-brand-sub {
+            color: #cbd5e1;
+            font-size: .9rem;
+            margin-top: 3px;
+        }
+
+        .small-muted {
+            color: #94a3b8;
+            font-size: .9rem;
+        }
+
+        @media (max-width: 900px) {
+            .hero-title {
+                font-size: 2.3rem;
+            }
+            .hero {
+                padding: 22px;
+            }
+            .block-container {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def hero(title, subtitle):
+    st.markdown(
+        f"""
+        <div class="hero">
+            <div class="hero-title">{title}</div>
+            <div class="hero-subtitle">{subtitle}</div>
+            <div style="margin-top:16px;">
+                <span class="pill">☁️ Supabase</span>
+                <span class="pill">🔐 Login</span>
+                <span class="pill">📱 Mobile ready</span>
+                <span class="pill">🤖 IA</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def section_header(title, subtitle=""):
+    st.markdown(
+        f"""
+        <div class="section-head">
+            <div>
+                <div class="section-head-title">{title}</div>
+                <div class="section-head-sub">{subtitle}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def stat_card(label, value, caption="", icon=""):
+    st.markdown(
+        f"""
+        <div class="mini-card">
+            <div class="mini-label">{icon} {label}</div>
+            <div class="mini-value">{value}</div>
+            <div class="mini-caption">{caption}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+inject_css()
+
+
+# ============================================================
+# DATA HELPERS
+# ============================================================
 
 
 def new_id():
-    return str(uuid.uuid4())[:8]
+    return str(uuid.uuid4())
 
 
-def cargar(nombre):
-    path = PATHS[nombre]
+def slug(texto):
+    texto = str(texto).strip().lower().replace(" ", "_")
+    permitido = "abcdefghijklmnopqrstuvwxyz0123456789_-"
+    return "".join(c for c in texto if c in permitido) or "usuario"
+
+
+def serializar_valor(v):
+    try:
+        if pd.isna(v):
+            return None
+    except Exception:
+        pass
+    if isinstance(v, pd.Timestamp):
+        return v.date().isoformat()
+    if hasattr(v, "isoformat"):
+        return v.isoformat()
+    return v
+
+
+def normalizar_df(df, nombre):
     cols = COLUMNAS[nombre]
-
-    if not os.path.exists(path) or os.path.getsize(path) == 0:
-        df = pd.DataFrame(columns=cols)
-        df.to_csv(path, index=False)
-        return df
-
-    df = pd.read_csv(path)
-
+    if df is None or df.empty:
+        return pd.DataFrame(columns=cols)
     for c in cols:
         if c not in df.columns:
             df[c] = None
-
-    for c in ["fecha", "fecha_limite"]:
+    for c in DATE_COLS:
         if c in df.columns and not df.empty:
             df[c] = pd.to_datetime(df[c], errors="coerce").dt.date
-
-    for c in ["cantidad", "precio", "coste", "progreso", "limite_mensual", "dia_cobro"]:
+    for c in NUM_COLS:
         if c in df.columns and not df.empty:
             df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
-
-    for c in ["completada", "comprado", "completado"]:
+    for c in BOOL_COLS:
         if c in df.columns and not df.empty:
-            df[c] = df[c].astype(str).str.lower().isin(["true", "1", "yes"])
-
+            df[c] = df[c].astype(str).str.lower().isin(["true", "1", "yes", "sí", "si"])
     return df[cols]
 
 
+def backup_local(nombre, df):
+    user_dir = os.path.join(BASE_DATA_DIR, usuario_actual)
+    os.makedirs(user_dir, exist_ok=True)
+    df.to_csv(os.path.join(user_dir, f"{nombre}.csv"), index=False)
+
+
+def cargar_backup(nombre):
+    path = os.path.join(BASE_DATA_DIR, usuario_actual, f"{nombre}.csv")
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
+        return pd.DataFrame(columns=COLUMNAS[nombre])
+    return normalizar_df(pd.read_csv(path), nombre)
+
+
+def cargar(nombre):
+    try:
+        res = (
+            supabase.table("life_os_items")
+            .select("id,data")
+            .eq("user_id", usuario_actual)
+            .eq("section", nombre)
+            .execute()
+        )
+        filas = []
+        for item in res.data or []:
+            data = item.get("data") or {}
+            data["id"] = item.get("id")
+            filas.append(data)
+        df = normalizar_df(pd.DataFrame(filas), nombre)
+        backup_local(nombre, df)
+        return df
+    except Exception:
+        st.sidebar.warning(f"Supabase no disponible en {nombre}. Usando copia local.")
+        return cargar_backup(nombre)
+
+
 def guardar(nombre, df):
-    df.to_csv(PATHS[nombre], index=False)
+    df = normalizar_df(df.copy(), nombre)
+    try:
+        (
+            supabase.table("life_os_items")
+            .delete()
+            .eq("user_id", usuario_actual)
+            .eq("section", nombre)
+            .execute()
+        )
+        registros = []
+        for _, row in df.iterrows():
+            item_id = (
+                str(row["id"])
+                if pd.notna(row["id"]) and str(row["id"]).strip()
+                else new_id()
+            )
+            data = {
+                col: serializar_valor(row[col])
+                for col in COLUMNAS[nombre]
+                if col != "id"
+            }
+            registros.append(
+                {
+                    "id": item_id,
+                    "user_id": usuario_actual,
+                    "section": nombre,
+                    "data": data,
+                }
+            )
+        if registros:
+            supabase.table("life_os_items").insert(registros).execute()
+        backup_local(nombre, df)
+    except Exception as e:
+        st.error(f"Error guardando en Supabase ({nombre}): {e}")
 
 
 def add(nombre, datos):
-    df = cargar(nombre)
+    datos = datos.copy()
     datos["id"] = new_id()
+    df = cargar(nombre)
     guardar(nombre, pd.concat([df, pd.DataFrame([datos])], ignore_index=True))
 
 
 def delete(nombre, item_id):
+    try:
+        supabase.table("life_os_items").delete().eq("id", item_id).eq(
+            "user_id", usuario_actual
+        ).eq("section", nombre).execute()
+    except Exception as e:
+        st.error(f"Error eliminando en Supabase: {e}")
     df = cargar(nombre)
-    guardar(nombre, df[df["id"] != item_id])
+    backup_local(nombre, df[df["id"] != item_id])
 
 
 def update(nombre, item_id, cambios):
@@ -410,40 +540,70 @@ def update(nombre, item_id, cambios):
     guardar(nombre, df)
 
 
-def get_config(clave, default=None):
-    df = cargar("config")
-    fila = df[df["clave"] == clave]
-    if fila.empty:
-        return default
-    return fila.iloc[0]["valor"]
+# ============================================================
+# LOGIN
+# ============================================================
 
 
-def set_config(clave, valor):
-    df = cargar("config")
-    if df[df["clave"] == clave].empty:
-        df = pd.concat(
-            [df, pd.DataFrame([{"clave": clave, "valor": valor}])], ignore_index=True
-        )
-    else:
-        df.loc[df["clave"] == clave, "valor"] = valor
-    guardar("config", df)
+def login_screen():
+    hero(
+        "LIFE OS",
+        "Tu centro personal para organizar la vida, desde cualquier dispositivo.",
+    )
+
+    c1, c2, c3 = st.columns([1, 1.1, 1])
+    with c2:
+        st.markdown('<div class="glass">', unsafe_allow_html=True)
+        st.subheader("Acceso")
+        modo = st.radio("Modo", ["Iniciar sesión", "Crear cuenta"], horizontal=True)
+        email = st.text_input("Email")
+        password = st.text_input("Contraseña", type="password")
+
+        if modo == "Iniciar sesión":
+            if st.button("Entrar", use_container_width=True):
+                if not email.strip() or not password.strip():
+                    st.error("Introduce email y contraseña.")
+                else:
+                    try:
+                        res = supabase.auth.sign_in_with_password(
+                            {"email": email, "password": password}
+                        )
+                        st.session_state["auth_user_id"] = res.user.id
+                        st.session_state["auth_email"] = res.user.email
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"No se pudo iniciar sesión: {e}")
+        else:
+            st.caption("Si Supabase pide confirmar email, revisa tu correo.")
+            if st.button("Crear cuenta", use_container_width=True):
+                if not email.strip() or not password.strip():
+                    st.error("Introduce email y contraseña.")
+                elif len(password) < 6:
+                    st.error("La contraseña debe tener al menos 6 caracteres.")
+                else:
+                    try:
+                        supabase.auth.sign_up({"email": email, "password": password})
+                        st.success("Cuenta creada. Ahora inicia sesión.")
+                    except Exception as e:
+                        st.error(f"No se pudo crear la cuenta: {e}")
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
-def prueba_supabase():
-    datos = {
-        "id": str(uuid.uuid4()),
-        "user_id": "pablo",
-        "section": "test",
-        "data": {"mensaje": "Hola Supabase"},
-    }
+if "auth_user_id" not in st.session_state:
+    login_screen()
+    st.stop()
 
-    resultado = supabase.table("life_os_items").insert(datos).execute()
+usuario_actual = st.session_state["auth_user_id"]
+usuario_email = st.session_state.get("auth_email", "usuario")
 
-    return resultado
+USER_DIR = os.path.join(BASE_DATA_DIR, slug(usuario_email))
+FILES_DIR = os.path.join(USER_DIR, "archivos")
+os.makedirs(FILES_DIR, exist_ok=True)
 
 
 # ============================================================
-# LÓGICA
+# LOGIC
 # ============================================================
 
 
@@ -451,26 +611,21 @@ def generar_repeticiones():
     tareas = cargar("tareas")
     if tareas.empty:
         return
-
     hoy = date.today()
     nuevas = []
-
     for _, r in tareas.iterrows():
         if r["repeticion"] == "No" or pd.isna(r["fecha"]) or r["fecha"] >= hoy:
             continue
-
         crear = (
             r["repeticion"] == "Diaria"
             or (r["repeticion"] == "Semanal" and r["fecha"].weekday() == hoy.weekday())
             or (r["repeticion"] == "Mensual" and r["fecha"].day == hoy.day)
         )
-
         existe = tareas[
             (tareas["fecha"] == hoy)
             & (tareas["tarea"] == r["tarea"])
             & (tareas["categoria"] == r["categoria"])
         ]
-
         if crear and existe.empty:
             nuevas.append(
                 {
@@ -483,80 +638,38 @@ def generar_repeticiones():
                     "completada": False,
                 }
             )
-
     if nuevas:
         guardar("tareas", pd.concat([tareas, pd.DataFrame(nuevas)], ignore_index=True))
 
 
 def proximos_7_dias():
-    hoy = date.today()
-    fin = hoy + timedelta(days=7)
+    hoy, fin = date.today(), date.today() + timedelta(days=7)
     filas = []
+    for nombre, tipo, titulo_col, detalle_cols in [
+        ("tareas", "Tarea", "tarea", ["categoria", "prioridad"]),
+        ("calendario", "Evento", "titulo", ["hora", "categoria"]),
+        ("universidad", "Universidad", "asignatura", ["tipo", "descripcion"]),
+        ("viajes", "Viaje", "viaje", ["tipo", "descripcion"]),
+    ]:
+        df = cargar(nombre)
+        if not df.empty and "fecha" in df.columns:
+            sub = df[(df["fecha"] >= hoy) & (df["fecha"] <= fin)]
+            if nombre == "tareas":
+                sub = sub[~sub["completada"]]
+            if "estado" in sub.columns:
+                sub = sub[sub["estado"] != "Hecho"]
+            for _, r in sub.iterrows():
+                detalle = " | ".join(str(r.get(c, "")) for c in detalle_cols)
+                filas.append(
+                    {
+                        "Fecha": r["fecha"],
+                        "Tipo": tipo,
+                        "Título": r[titulo_col],
+                        "Detalle": detalle,
+                    }
+                )
 
-    tareas = cargar("tareas")
-    eventos = cargar("calendario")
-    uni = cargar("universidad")
     sus = cargar("suscripciones")
-    viajes = cargar("viajes")
-
-    if not tareas.empty:
-        sub = tareas[
-            (tareas["fecha"] >= hoy)
-            & (tareas["fecha"] <= fin)
-            & (~tareas["completada"])
-        ]
-        for _, r in sub.iterrows():
-            filas.append(
-                {
-                    "Fecha": r["fecha"],
-                    "Tipo": "Tarea",
-                    "Título": r["tarea"],
-                    "Detalle": f"{r['categoria']} | {r['prioridad']}",
-                }
-            )
-
-    if not eventos.empty:
-        sub = eventos[(eventos["fecha"] >= hoy) & (eventos["fecha"] <= fin)]
-        for _, r in sub.iterrows():
-            filas.append(
-                {
-                    "Fecha": r["fecha"],
-                    "Tipo": "Evento",
-                    "Título": r["titulo"],
-                    "Detalle": f"{r['hora']} | {r['categoria']}",
-                }
-            )
-
-    if not uni.empty:
-        sub = uni[
-            (uni["fecha"] >= hoy) & (uni["fecha"] <= fin) & (uni["estado"] != "Hecho")
-        ]
-        for _, r in sub.iterrows():
-            filas.append(
-                {
-                    "Fecha": r["fecha"],
-                    "Tipo": "Universidad",
-                    "Título": f"{r['asignatura']} - {r['tipo']}",
-                    "Detalle": r["descripcion"],
-                }
-            )
-
-    if not viajes.empty:
-        sub = viajes[
-            (viajes["fecha"] >= hoy)
-            & (viajes["fecha"] <= fin)
-            & (viajes["estado"] != "Hecho")
-        ]
-        for _, r in sub.iterrows():
-            filas.append(
-                {
-                    "Fecha": r["fecha"],
-                    "Tipo": "Viaje",
-                    "Título": f"{r['viaje']} - {r['tipo']}",
-                    "Detalle": r["descripcion"],
-                }
-            )
-
     if not sus.empty:
         for _, r in sus[sus["estado"] == "Activa"].iterrows():
             try:
@@ -586,13 +699,131 @@ def proximos_7_dias():
     )
 
 
+def productividad_score():
+    tareas, log, hoy = cargar("tareas"), cargar("habitos_log"), date.today()
+    ult7 = [hoy - timedelta(days=i) for i in range(7)]
+    tareas_7 = (
+        tareas[tareas["fecha"].isin(ult7)] if not tareas.empty else pd.DataFrame()
+    )
+    log_7 = log[log["fecha"].isin(ult7)] if not log.empty else pd.DataFrame()
+    total = len(tareas_7) + len(log_7)
+    done = (tareas_7["completada"].sum() if not tareas_7.empty else 0) + (
+        log_7["completado"].sum() if not log_7.empty else 0
+    )
+    return round(done / total * 100, 1) if total else 0
+
+
+def calcular_nivel():
+    tareas, objetivos, log = (
+        cargar("tareas"),
+        cargar("objetivos"),
+        cargar("habitos_log"),
+    )
+    xp = 0
+    if not tareas.empty:
+        xp += int(tareas["completada"].sum()) * 10
+    if not objetivos.empty:
+        xp += len(objetivos[objetivos["estado"] == "Completado"]) * 100
+    if not log.empty:
+        xp += int(log["completado"].sum()) * 5
+    return xp, xp // 250 + 1, xp % 250
+
+
+def resumen_financiero():
+    finanzas = cargar("finanzas")
+    sus = cargar("suscripciones")
+    presupuestos = cargar("presupuestos")
+    hoy = date.today()
+
+    if finanzas.empty:
+        return {
+            "ingresos": 0,
+            "gastos": 0,
+            "balance": 0,
+            "ahorro": 0,
+            "prevision": 0,
+            "sus": 0,
+            "top": "-",
+        }
+
+    fin_mes = finanzas[
+        (pd.to_datetime(finanzas["fecha"]).dt.month == hoy.month)
+        & (pd.to_datetime(finanzas["fecha"]).dt.year == hoy.year)
+    ]
+    ingresos = fin_mes[fin_mes["tipo"] == "Ingreso"]["cantidad"].sum()
+    gastos = fin_mes[fin_mes["tipo"] == "Gasto"]["cantidad"].sum()
+    balance = ingresos - gastos
+    ahorro = round(balance / ingresos * 100, 1) if ingresos > 0 else 0
+    prevision = round(gastos / max(hoy.day, 1) * 31, 2) if gastos > 0 else 0
+    sus_coste = sus[sus["estado"] == "Activa"]["coste"].sum() if not sus.empty else 0
+
+    gastos_df = fin_mes[fin_mes["tipo"] == "Gasto"]
+    if not gastos_df.empty:
+        top = (
+            gastos_df.groupby("categoria")["cantidad"]
+            .sum()
+            .sort_values(ascending=False)
+        )
+        top_cat = f"{top.index[0]} · {top.iloc[0]:.0f} €"
+    else:
+        top_cat = "-"
+
+    return {
+        "ingresos": ingresos,
+        "gastos": gastos,
+        "balance": balance,
+        "ahorro": ahorro,
+        "prevision": prevision,
+        "sus": sus_coste,
+        "top": top_cat,
+    }
+
+
+def notificaciones():
+    hoy = date.today()
+    avisos = []
+    tareas = cargar("tareas")
+    if not tareas.empty:
+        vencidas = tareas[(tareas["fecha"] < hoy) & (~tareas["completada"])]
+        altas = tareas[
+            (tareas["fecha"] == hoy)
+            & (~tareas["completada"])
+            & (tareas["prioridad"] == "Alta")
+        ]
+        if not vencidas.empty:
+            avisos.append(
+                (
+                    "🔴",
+                    "Tareas vencidas",
+                    f"{len(vencidas)} tarea(s) pendientes de días anteriores.",
+                )
+            )
+        if not altas.empty:
+            avisos.append(
+                ("🟠", "Prioridad alta", f"{len(altas)} tarea(s) importantes hoy.")
+            )
+    uni = cargar("universidad")
+    if not uni.empty:
+        prox = uni[
+            (uni["fecha"] >= hoy)
+            & (uni["fecha"] <= hoy + timedelta(days=7))
+            & (uni["estado"] != "Hecho")
+        ]
+        if not prox.empty:
+            avisos.append(("🎓", "Universidad", f"{len(prox)} elemento(s) próximos."))
+    if not avisos:
+        avisos.append(
+            ("✅", "Todo en orden", "No hay alertas importantes ahora mismo.")
+        )
+    return avisos
+
+
 def buscar(q):
     q = q.lower().strip()
     if not q:
         return pd.DataFrame()
-
     out = []
-    secciones = [
+    for nombre in [
         "tareas",
         "notas",
         "proyectos",
@@ -602,12 +833,8 @@ def buscar(q):
         "calendario",
         "compras",
         "archivos",
-    ]
-
-    for nombre in secciones:
+    ]:
         df = cargar(nombre)
-        if df.empty:
-            continue
         for _, r in df.iterrows():
             texto = " ".join(str(x) for x in r.values).lower()
             if q in texto:
@@ -619,98 +846,7 @@ def buscar(q):
                         )[:250],
                     }
                 )
-
     return pd.DataFrame(out)
-
-
-def productividad_score():
-    tareas = cargar("tareas")
-    log = cargar("habitos_log")
-    hoy = date.today()
-
-    ult7 = [hoy - timedelta(days=i) for i in range(7)]
-    tareas_7 = (
-        tareas[tareas["fecha"].isin(ult7)] if not tareas.empty else pd.DataFrame()
-    )
-    log_7 = log[log["fecha"].isin(ult7)] if not log.empty else pd.DataFrame()
-
-    total_tareas = len(tareas_7)
-    tareas_done = tareas_7["completada"].sum() if total_tareas else 0
-
-    total_hab = len(log_7)
-    hab_done = log_7["completado"].sum() if total_hab else 0
-
-    if total_tareas + total_hab == 0:
-        return 0
-
-    return round(((tareas_done + hab_done) / (total_tareas + total_hab)) * 100, 1)
-
-
-def calcular_nivel():
-    tareas = cargar("tareas")
-    objetivos = cargar("objetivos")
-    log = cargar("habitos_log")
-
-    xp = 0
-    if not tareas.empty:
-        xp += int(tareas["completada"].sum()) * 10
-    if not objetivos.empty:
-        xp += len(objetivos[objetivos["estado"] == "Completado"]) * 100
-    if not log.empty:
-        xp += int(log["completado"].sum()) * 5
-
-    nivel = xp // 250 + 1
-    resto = xp % 250
-
-    return xp, nivel, resto
-
-
-def sugerencia_diaria():
-    prox = proximos_7_dias()
-    tareas = cargar("tareas")
-    finanzas = cargar("finanzas")
-    presupuestos = cargar("presupuestos")
-    hoy = date.today()
-
-    mensajes = []
-
-    if not prox.empty:
-        mensajes.append(
-            f"Tienes {len(prox)} elementos importantes en los próximos 7 días."
-        )
-
-    tareas_hoy = (
-        tareas[(tareas["fecha"] == hoy) & (~tareas["completada"])]
-        if not tareas.empty
-        else pd.DataFrame()
-    )
-    if not tareas_hoy.empty:
-        alta = tareas_hoy[tareas_hoy["prioridad"] == "Alta"]
-        if not alta.empty:
-            mensajes.append(f"Prioriza {len(alta)} tarea(s) de prioridad alta hoy.")
-        else:
-            mensajes.append(f"Tienes {len(tareas_hoy)} tarea(s) pendientes hoy.")
-
-    if not finanzas.empty and not presupuestos.empty:
-        fin_mes = finanzas[
-            (pd.to_datetime(finanzas["fecha"]).dt.month == hoy.month)
-            & (pd.to_datetime(finanzas["fecha"]).dt.year == hoy.year)
-            & (finanzas["tipo"] == "Gasto")
-        ]
-        gastos_mes = fin_mes.groupby("categoria", as_index=False)["cantidad"].sum()
-        control = presupuestos.merge(gastos_mes, on="categoria", how="left").fillna(
-            {"cantidad": 0}
-        )
-        pasados = control[control["cantidad"] > control["limite_mensual"]]
-        if not pasados.empty:
-            mensajes.append("Has superado algún presupuesto mensual. Revisa Finanzas.")
-
-    if not mensajes:
-        mensajes.append(
-            "Día tranquilo. Buen momento para adelantar objetivos o limpiar tareas antiguas."
-        )
-
-    return mensajes
 
 
 def contexto_ia():
@@ -738,16 +874,13 @@ def contexto_ia():
 
 def preguntar_ia(pregunta):
     if genai is None:
-        return "Falta instalar google-generativeai: pip install google-generativeai"
-
+        return "Falta instalar google-generativeai."
     try:
         api_key = st.secrets["GEMINI_API_KEY"]
     except Exception:
-        return "Falta configurar GEMINI_API_KEY en .streamlit/secrets.toml"
-
+        return "Falta configurar GEMINI_API_KEY."
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel("gemini-2.5-flash")
-
     prompt = f"""
 Eres un asistente personal de productividad, organización, finanzas y estudios.
 Usa los datos del usuario para responder con acciones concretas, sin inventar datos.
@@ -758,7 +891,6 @@ DATOS:
 PREGUNTA:
 {pregunta}
 """
-
     return model.generate_content(prompt).text
 
 
@@ -773,72 +905,95 @@ def tabla_simple(nombre):
 def exportar_zip_usuario():
     buffer = BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as z:
-        for root, _, files in os.walk(USER_DIR):
-            for file in files:
-                full = os.path.join(root, file)
-                rel = os.path.relpath(full, USER_DIR)
-                z.write(full, rel)
+        if os.path.exists(USER_DIR):
+            for root, _, files in os.walk(USER_DIR):
+                for file in files:
+                    full = os.path.join(root, file)
+                    rel = os.path.relpath(full, USER_DIR)
+                    z.write(full, rel)
     buffer.seek(0)
     return buffer
 
 
-generar_repeticiones()
+def page_dashboard():
+    hero("Dashboard", f"Bienvenido, {usuario_email}. Esto es lo importante de hoy.")
 
-# ============================================================
-# UI
-# ============================================================
+    hoy = date.today()
+    tareas = cargar("tareas")
+    wishlist = cargar("wishlist")
+    compras = cargar("compras")
+    habitos = cargar("habitos")
+    log = cargar("habitos_log")
+    fin = resumen_financiero()
 
-st.title(APP_NAME)
-st.caption(
-    "Tareas, dinero, hábitos, universidad, viajes, archivos, segundo cerebro e IA."
-)
+    tareas_hoy = tareas[tareas["fecha"] == hoy] if not tareas.empty else pd.DataFrame()
+    hechas = len(tareas_hoy[tareas_hoy["completada"]]) if not tareas_hoy.empty else 0
+    total = len(tareas_hoy)
+    habitos_hoy = log[log["fecha"] == hoy] if not log.empty else pd.DataFrame()
+    hab_done = int(habitos_hoy["completado"].sum()) if not habitos_hoy.empty else 0
 
-for m in sugerencia_diaria():
-    st.sidebar.info(m)
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        stat_card("Tareas hoy", f"{hechas}/{total}", "Completadas", "✅")
+    with c2:
+        stat_card("Hábitos", f"{hab_done}/{len(habitos)}", "Hechos hoy", "🏋️")
+    with c3:
+        stat_card(
+            "Balance mes", f"{fin['balance']:.0f} €", f"Ahorro {fin['ahorro']}%", "💰"
+        )
+    with c4:
+        pend = (
+            len(wishlist[wishlist["estado"] == "Pendiente"])
+            if not wishlist.empty
+            else 0
+        )
+        comp = len(compras[compras["comprado"] == False]) if not compras.empty else 0
+        stat_card("Pendientes", f"{pend + comp}", "Wishlist + compra", "🛒")
 
-xp, nivel, resto = calcular_nivel()
-st.sidebar.metric("Nivel", nivel)
-st.sidebar.progress(resto / 250)
-st.sidebar.caption(f"XP total: {xp}")
+    c1, c2 = st.columns([1.25, 0.85])
+    with c1:
+        section_header(
+            "⏰ Próximos 7 días", "Tareas, eventos, universidad, viajes y pagos."
+        )
+        prox = proximos_7_dias()
+        if prox.empty:
+            st.info("No hay eventos próximos.")
+        else:
+            st.dataframe(prox, use_container_width=True, hide_index=True)
 
-tabs = st.tabs(
-    [
-        "📱 Rápido",
-        "🏠 Inicio",
-        "🔎 Buscar",
-        "✅ Tareas",
-        "📅 Calendario",
-        "🏋️ Hábitos",
-        "💰 Finanzas",
-        "💳 Suscripciones",
-        "⭐ Wishlist",
-        "🛒 Compras",
-        "🎯 Objetivos",
-        "📚 Proyectos",
-        "🎓 Universidad",
-        "✈️ Viajes",
-        "📝 Notas",
-        "📂 Archivos",
-        "🧠 Cerebro",
-        "📊 Estadísticas",
-        "☁️ Copias/Nube",
-        "🤖 IA",
-    ]
-)
+    with c2:
+        section_header("🔔 Avisos", "Señales rápidas para decidir qué hacer.")
+        for icono, titulo, texto in notificaciones()[:5]:
+            st.markdown(
+                f'<div class="alert">{icono} <strong>{titulo}</strong><br><span class="small-muted">{texto}</span></div>',
+                unsafe_allow_html=True,
+            )
+
+    section_header("🤖 Sugerencia rápida", "Resumen automático basado en tus datos.")
+    sugerencias = []
+    if total - hechas > 0:
+        sugerencias.append(f"Te quedan {total-hechas} tarea(s) para hoy.")
+    if fin["gastos"] > 0:
+        sugerencias.append(
+            f"Llevas {fin['gastos']:.0f} € gastados este mes. Categoría principal: {fin['top']}."
+        )
+    if not sugerencias:
+        sugerencias.append("Día tranquilo. Buen momento para adelantar objetivos.")
+    for s in sugerencias:
+        st.write(f"- {s}")
 
 
-# ---------------- RÁPIDO ----------------
-
-with tabs[0]:
-    st.subheader("📱 Entrada rápida")
-
+def page_rapido():
+    section_header(
+        "📱 Entrada rápida", "Añade lo más común sin navegar por toda la app."
+    )
     accion = st.radio("Añadir", ["Tarea", "Gasto", "Nota", "Compra"], horizontal=True)
 
     if accion == "Tarea":
         with st.form("quick_tarea"):
             tarea = st.text_input("Tarea")
             prioridad = st.selectbox("Prioridad", ["Alta", "Media", "Baja"])
-            if st.form_submit_button("Añadir") and tarea.strip():
+            if st.form_submit_button("Añadir tarea") and tarea.strip():
                 add(
                     "tareas",
                     {
@@ -851,7 +1006,6 @@ with tabs[0]:
                     },
                 )
                 st.rerun()
-
     elif accion == "Gasto":
         with st.form("quick_gasto"):
             cantidad = st.number_input("Cantidad (€)", min_value=0.0, step=1.0)
@@ -869,7 +1023,7 @@ with tabs[0]:
                 ],
             )
             desc = st.text_input("Descripción")
-            if st.form_submit_button("Añadir") and cantidad > 0:
+            if st.form_submit_button("Añadir gasto") and cantidad > 0:
                 add(
                     "finanzas",
                     {
@@ -881,15 +1035,13 @@ with tabs[0]:
                     },
                 )
                 st.rerun()
-
     elif accion == "Nota":
         with st.form("quick_nota"):
             nota = st.text_area("Nota")
             vinculo = st.text_input(
-                "Vincular a proyecto/tema",
-                placeholder="Ej: RUNATICS, Erasmus, Universidad",
+                "Vincular a proyecto/tema", placeholder="Ej: Erasmus, Universidad"
             )
-            if st.form_submit_button("Guardar") and nota.strip():
+            if st.form_submit_button("Guardar nota") and nota.strip():
                 add(
                     "notas",
                     {
@@ -901,11 +1053,10 @@ with tabs[0]:
                     },
                 )
                 st.rerun()
-
     else:
         with st.form("quick_compra"):
             item = st.text_input("Producto")
-            if st.form_submit_button("Añadir") and item.strip():
+            if st.form_submit_button("Añadir compra") and item.strip():
                 add(
                     "compras",
                     {
@@ -917,14 +1068,11 @@ with tabs[0]:
                 )
                 st.rerun()
 
-    st.divider()
-    st.subheader("Tareas de hoy")
-
+    section_header("✅ Tareas de hoy")
     tareas = cargar("tareas")
     hoy_df = (
         tareas[tareas["fecha"] == date.today()] if not tareas.empty else pd.DataFrame()
     )
-
     if hoy_df.empty:
         st.info("No tienes tareas para hoy.")
     else:
@@ -937,321 +1085,284 @@ with tabs[0]:
                 st.rerun()
 
 
-# ---------------- INICIO ----------------
-
-with tabs[1]:
-    st.subheader("🏠 Panel principal")
-    st.markdown(
-        """
-        <div class="glass-card">
-            <div class="section-title">Vista general</div>
-            <div class="muted">Resumen rápido de tu día, próximos vencimientos y estado financiero.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+def page_productividad():
+    vista = st.radio(
+        "Productividad",
+        ["Tareas", "Hábitos", "Objetivos", "Proyectos"],
+        horizontal=True,
     )
 
-    if st.button("🧪 Probar Supabase"):
-        try:
-            prueba_supabase()
-            st.success("Insertado correctamente en Supabase")
-        except Exception as e:
-            st.error(str(e))
-
-    hoy = date.today()
-
-    tareas = cargar("tareas")
-    finanzas = cargar("finanzas")
-    wishlist = cargar("wishlist")
-    objetivos = cargar("objetivos")
-    compras = cargar("compras")
-    habitos = cargar("habitos")
-    log = cargar("habitos_log")
-
-    tareas_hoy = tareas[tareas["fecha"] == hoy] if not tareas.empty else pd.DataFrame()
-    hechas = len(tareas_hoy[tareas_hoy["completada"]]) if not tareas_hoy.empty else 0
-    total = len(tareas_hoy)
-
-    fin_mes = (
-        finanzas[
-            (pd.to_datetime(finanzas["fecha"]).dt.month == hoy.month)
-            & (pd.to_datetime(finanzas["fecha"]).dt.year == hoy.year)
-        ]
-        if not finanzas.empty
-        else pd.DataFrame()
-    )
-
-    ingresos = (
-        fin_mes[fin_mes["tipo"] == "Ingreso"]["cantidad"].sum()
-        if not fin_mes.empty
-        else 0
-    )
-    gastos = (
-        fin_mes[fin_mes["tipo"] == "Gasto"]["cantidad"].sum()
-        if not fin_mes.empty
-        else 0
-    )
-
-    habitos_hoy = log[log["fecha"] == hoy] if not log.empty else pd.DataFrame()
-    hab_done = habitos_hoy["completado"].sum() if not habitos_hoy.empty else 0
-
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("✅ Tareas hoy", f"{hechas}/{total}")
-    c2.metric("🏋️ Hábitos hoy", f"{int(hab_done)}/{len(habitos)}")
-    c3.metric("💸 Gastos mes", f"{gastos:.2f} €")
-    c4.metric("💰 Balance mes", f"{ingresos-gastos:.2f} €")
-    c5.metric(
-        "⭐ Wishlist",
-        len(wishlist[wishlist["estado"] == "Pendiente"]) if not wishlist.empty else 0,
-    )
-    c6.metric("📊 Productividad", f"{productividad_score()}%")
-
-    st.subheader("⏰ Próximos 7 días")
-    st.dataframe(proximos_7_dias(), use_container_width=True)
-
-    st.subheader("🤖 Resumen inteligente")
-    for m in sugerencia_diaria():
-        st.write(f"- {m}")
-
-
-# ---------------- BUSCAR ----------------
-
-with tabs[2]:
-    st.subheader("🔎 Buscador global")
-
-    q = st.text_input(
-        "Buscar en tareas, notas, proyectos, universidad, viajes, wishlist, compras, calendario y archivos"
-    )
-    res = buscar(q)
-
-    if q and res.empty:
-        st.info("No se encontraron resultados.")
-    elif not res.empty:
-        st.dataframe(res, use_container_width=True)
-
-
-# ---------------- TAREAS ----------------
-
-with tabs[3]:
-    st.subheader("✅ Tareas")
-
-    with st.form("form_tarea"):
-        c1, c2, c3 = st.columns(3)
-        fecha = c1.date_input("Fecha", value=date.today())
-        categoria = c2.selectbox(
-            "Categoría",
-            [
-                "Personal",
-                "Universidad",
-                "Trabajo",
-                "Deporte",
-                "Casa",
-                "Erasmus",
-                "Otro",
-            ],
-        )
-        prioridad = c3.selectbox("Prioridad", ["Alta", "Media", "Baja"])
-        tarea = st.text_input("Tarea")
-        repeticion = st.selectbox("Repetición", ["No", "Diaria", "Semanal", "Mensual"])
-
-        if st.form_submit_button("Añadir") and tarea.strip():
-            add(
-                "tareas",
-                {
-                    "fecha": fecha,
-                    "tarea": tarea,
-                    "categoria": categoria,
-                    "prioridad": prioridad,
-                    "repeticion": repeticion,
-                    "completada": False,
-                },
+    if vista == "Tareas":
+        section_header("✅ Tareas", "Planifica, completa y edita tareas.")
+        with st.form("form_tarea"):
+            c1, c2, c3 = st.columns(3)
+            fecha = c1.date_input("Fecha", value=date.today())
+            categoria = c2.selectbox(
+                "Categoría",
+                [
+                    "Personal",
+                    "Universidad",
+                    "Trabajo",
+                    "Deporte",
+                    "Casa",
+                    "Erasmus",
+                    "Otro",
+                ],
             )
-            st.rerun()
-
-    tareas = cargar("tareas")
-    fecha_ver = st.date_input("Ver día", value=date.today(), key="fecha_tareas")
-
-    if tareas.empty:
-        st.info("No hay tareas.")
-    else:
-        for _, r in tareas[tareas["fecha"] == fecha_ver].iterrows():
-            with st.expander(f"{'✅' if r['completada'] else '⬜'} {r['tarea']}"):
-                nueva_tarea = st.text_input(
-                    "Tarea", value=r["tarea"], key=f"txt_{r['id']}"
-                )
-                c1, c2, c3 = st.columns(3)
-                nueva_fecha = c1.date_input(
-                    "Fecha", value=r["fecha"], key=f"fecha_{r['id']}"
-                )
-                nueva_cat = c2.selectbox(
-                    "Categoría",
-                    [
-                        "Personal",
-                        "Universidad",
-                        "Trabajo",
-                        "Deporte",
-                        "Casa",
-                        "Erasmus",
-                        "Otro",
-                    ],
-                    key=f"cat_{r['id']}",
-                )
-                nueva_prio = c3.selectbox(
-                    "Prioridad", ["Alta", "Media", "Baja"], key=f"prio_{r['id']}"
-                )
-                done = st.checkbox(
-                    "Completada", value=bool(r["completada"]), key=f"done_{r['id']}"
-                )
-
-                c1, c2 = st.columns(2)
-                if c1.button("Guardar", key=f"save_{r['id']}"):
-                    update(
-                        "tareas",
-                        r["id"],
-                        {
-                            "fecha": nueva_fecha,
-                            "tarea": nueva_tarea,
-                            "categoria": nueva_cat,
-                            "prioridad": nueva_prio,
-                            "completada": done,
-                        },
-                    )
-                    st.rerun()
-                if c2.button("Eliminar", key=f"del_{r['id']}"):
-                    delete("tareas", r["id"])
-                    st.rerun()
-
-        st.dataframe(
-            tareas.sort_values("fecha", ascending=False), use_container_width=True
-        )
-
-
-# ---------------- CALENDARIO ----------------
-
-with tabs[4]:
-    st.subheader("📅 Calendario")
-
-    with st.form("form_evento"):
-        c1, c2 = st.columns(2)
-        fecha = c1.date_input("Fecha", value=date.today(), key="fecha_evento")
-        hora = c2.text_input("Hora", placeholder="Ej: 18:30")
-        titulo = st.text_input("Título")
-        categoria = st.selectbox(
-            "Categoría", ["Personal", "Universidad", "Trabajo", "Viaje", "Cita", "Otro"]
-        )
-        notas = st.text_area("Notas")
-
-        if st.form_submit_button("Añadir") and titulo.strip():
-            add(
-                "calendario",
-                {
-                    "fecha": fecha,
-                    "hora": hora,
-                    "titulo": titulo,
-                    "categoria": categoria,
-                    "notas": notas,
-                },
+            prioridad = c3.selectbox("Prioridad", ["Alta", "Media", "Baja"])
+            tarea = st.text_input("Tarea")
+            repeticion = st.selectbox(
+                "Repetición", ["No", "Diaria", "Semanal", "Mensual"]
             )
-            st.rerun()
-
-    eventos = cargar("calendario")
-    if eventos.empty:
-        st.info("No hay eventos.")
-    else:
-        st.dataframe(eventos.sort_values("fecha"), use_container_width=True)
-
-
-# ---------------- HÁBITOS ----------------
-
-with tabs[5]:
-    st.subheader("🏋️ Hábitos")
-
-    with st.form("form_habito"):
-        habito = st.text_input("Nuevo hábito")
-        c1, c2 = st.columns(2)
-        categoria = c1.selectbox(
-            "Categoría", ["Salud", "Estudio", "Deporte", "Casa", "Personal", "Otro"]
-        )
-        frecuencia = c2.selectbox("Frecuencia", ["Diaria", "Semanal"])
-
-        if st.form_submit_button("Crear") and habito.strip():
-            add(
-                "habitos",
-                {"habito": habito, "categoria": categoria, "frecuencia": frecuencia},
-            )
-            st.rerun()
-
-    habitos = cargar("habitos")
-    log = cargar("habitos_log")
-    hoy = date.today()
-
-    if habitos.empty:
-        st.info("No hay hábitos.")
-    else:
-        for _, h in habitos.iterrows():
-            ya = log[(log["fecha"] == hoy) & (log["habito_id"] == h["id"])]
-            completado = False if ya.empty else bool(ya.iloc[0]["completado"])
-            c1, c2, c3 = st.columns([0.1, 0.75, 0.15])
-            check = c1.checkbox("", value=completado, key=f"hab_{h['id']}")
-            c2.write(f"**{h['habito']}**")
-            c2.caption(f"{h['categoria']} | {h['frecuencia']}")
-            if c3.button("🗑️", key=f"del_hab_{h['id']}"):
-                delete("habitos", h["id"])
-                st.rerun()
-            if check != completado:
-                if ya.empty:
-                    add(
-                        "habitos_log",
-                        {"fecha": hoy, "habito_id": h["id"], "completado": check},
-                    )
-                else:
-                    update("habitos_log", ya.iloc[0]["id"], {"completado": check})
+            if st.form_submit_button("Añadir") and tarea.strip():
+                add(
+                    "tareas",
+                    {
+                        "fecha": fecha,
+                        "tarea": tarea,
+                        "categoria": categoria,
+                        "prioridad": prioridad,
+                        "repeticion": repeticion,
+                        "completada": False,
+                    },
+                )
                 st.rerun()
 
-
-# ---------------- FINANZAS ----------------
-
-with tabs[6]:
-    st.subheader("💰 Finanzas")
-
-    with st.form("form_fin"):
-        c1, c2, c3 = st.columns(3)
-        fecha = c1.date_input("Fecha", value=date.today(), key="fecha_fin")
-        tipo = c2.selectbox("Tipo", ["Gasto", "Ingreso"])
-        cantidad = c3.number_input("Cantidad (€)", min_value=0.0, step=1.0)
-        categoria = st.selectbox(
-            "Categoría",
-            [
-                "Comida",
-                "Transporte",
-                "Ocio",
-                "Universidad",
-                "Viajes",
-                "Salud",
-                "Deporte",
-                "Ingresos",
-                "Otros",
-            ],
-        )
-        desc = st.text_input("Descripción")
-
-        if st.form_submit_button("Guardar") and cantidad > 0:
-            add(
-                "finanzas",
-                {
-                    "fecha": fecha,
-                    "tipo": tipo,
-                    "categoria": categoria,
-                    "descripcion": desc,
-                    "cantidad": cantidad,
-                },
+        tareas = cargar("tareas")
+        fecha_ver = st.date_input("Ver día", value=date.today(), key="fecha_tareas")
+        if tareas.empty:
+            st.info("No hay tareas.")
+        else:
+            for _, r in tareas[tareas["fecha"] == fecha_ver].iterrows():
+                with st.expander(f"{'✅' if r['completada'] else '⬜'} {r['tarea']}"):
+                    nueva_tarea = st.text_input(
+                        "Tarea", value=r["tarea"], key=f"txt_{r['id']}"
+                    )
+                    nueva_fecha = st.date_input(
+                        "Fecha", value=r["fecha"], key=f"fecha_{r['id']}"
+                    )
+                    done = st.checkbox(
+                        "Completada", value=bool(r["completada"]), key=f"done_{r['id']}"
+                    )
+                    c1, c2 = st.columns(2)
+                    if c1.button("Guardar", key=f"save_{r['id']}"):
+                        update(
+                            "tareas",
+                            r["id"],
+                            {
+                                "fecha": nueva_fecha,
+                                "tarea": nueva_tarea,
+                                "completada": done,
+                            },
+                        )
+                        st.rerun()
+                    if c2.button("Eliminar", key=f"del_{r['id']}"):
+                        delete("tareas", r["id"])
+                        st.rerun()
+            st.dataframe(
+                tareas.sort_values("fecha", ascending=False), use_container_width=True
             )
-            st.rerun()
 
-    finanzas = cargar("finanzas")
-    presupuestos = cargar("presupuestos")
+    elif vista == "Hábitos":
+        section_header("🏋️ Hábitos", "Marca hábitos diarios o semanales.")
+        with st.form("form_habito"):
+            habito = st.text_input("Nuevo hábito")
+            c1, c2 = st.columns(2)
+            categoria = c1.selectbox(
+                "Categoría", ["Salud", "Estudio", "Deporte", "Casa", "Personal", "Otro"]
+            )
+            frecuencia = c2.selectbox("Frecuencia", ["Diaria", "Semanal"])
+            if st.form_submit_button("Crear") and habito.strip():
+                add(
+                    "habitos",
+                    {
+                        "habito": habito,
+                        "categoria": categoria,
+                        "frecuencia": frecuencia,
+                    },
+                )
+                st.rerun()
 
-    with st.expander("Configurar presupuestos mensuales"):
+        habitos, log, hoy = cargar("habitos"), cargar("habitos_log"), date.today()
+        if habitos.empty:
+            st.info("No hay hábitos.")
+        else:
+            for _, h in habitos.iterrows():
+                ya = log[(log["fecha"] == hoy) & (log["habito_id"] == h["id"])]
+                completado = False if ya.empty else bool(ya.iloc[0]["completado"])
+                c1, c2, c3 = st.columns([0.1, 0.75, 0.15])
+                check = c1.checkbox("", value=completado, key=f"hab_{h['id']}")
+                c2.markdown(f"**{h['habito']}**")
+                c2.caption(f"{h['categoria']} · {h['frecuencia']}")
+                if c3.button("🗑️", key=f"del_hab_{h['id']}"):
+                    delete("habitos", h["id"])
+                    st.rerun()
+                if check != completado:
+                    if ya.empty:
+                        add(
+                            "habitos_log",
+                            {"fecha": hoy, "habito_id": h["id"], "completado": check},
+                        )
+                    else:
+                        update("habitos_log", ya.iloc[0]["id"], {"completado": check})
+                    st.rerun()
+
+    elif vista == "Objetivos":
+        section_header("🎯 Objetivos", "Metas con progreso y fecha límite.")
+        with st.form("form_obj"):
+            obj = st.text_input("Objetivo")
+            c1, c2, c3 = st.columns(3)
+            cat = c1.selectbox(
+                "Categoría",
+                [
+                    "Personal",
+                    "Estudios",
+                    "Deporte",
+                    "Dinero",
+                    "Viajes",
+                    "Trabajo",
+                    "Otro",
+                ],
+            )
+            prog = c2.slider("Progreso", 0, 100, 0)
+            est = c3.selectbox("Estado", ["Activo", "Completado", "Pausado"])
+            fecha = st.date_input("Fecha límite", value=date.today())
+            if st.form_submit_button("Guardar") and obj.strip():
+                add(
+                    "objetivos",
+                    {
+                        "objetivo": obj,
+                        "categoria": cat,
+                        "progreso": prog,
+                        "fecha_limite": fecha,
+                        "estado": est,
+                    },
+                )
+                st.rerun()
+        df = cargar("objetivos")
+        if not df.empty:
+            for _, r in df.iterrows():
+                st.progress(float(r["progreso"]) / 100)
+                st.write(
+                    f"**{r['objetivo']}** · {r['categoria']} · {r['estado']} · {r['fecha_limite']}"
+                )
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("No hay objetivos.")
+
+    else:
+        section_header("📚 Proyectos", "Divide proyectos en tareas.")
+        with st.form("form_proy"):
+            proy = st.text_input("Proyecto")
+            tarea = st.text_input("Tarea")
+            estado = st.selectbox("Estado", ["Pendiente", "En curso", "Hecho"])
+            pr = st.selectbox("Prioridad", ["Alta", "Media", "Baja"])
+            if st.form_submit_button("Añadir") and proy.strip() and tarea.strip():
+                add(
+                    "proyectos",
+                    {
+                        "proyecto": proy,
+                        "tarea": tarea,
+                        "estado": estado,
+                        "prioridad": pr,
+                    },
+                )
+                st.rerun()
+        df = cargar("proyectos")
+        if df.empty:
+            st.info("No hay proyectos.")
+        else:
+            for p in df["proyecto"].unique():
+                st.markdown(f"### {p}")
+                st.dataframe(df[df["proyecto"] == p], use_container_width=True)
+
+
+def page_finanzas():
+    vista = st.radio(
+        "Finanzas",
+        ["Dashboard", "Movimientos", "Presupuestos", "Suscripciones", "Wishlist"],
+        horizontal=True,
+    )
+
+    fin = resumen_financiero()
+    if vista == "Dashboard":
+        section_header("💰 Finanzas", "Estado mensual, previsión y categorías.")
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            stat_card("Ingresos", f"{fin['ingresos']:.0f} €", "Este mes", "📈")
+        with c2:
+            stat_card("Gastos", f"{fin['gastos']:.0f} €", "Este mes", "📉")
+        with c3:
+            stat_card(
+                "Balance", f"{fin['balance']:.0f} €", f"Ahorro {fin['ahorro']}%", "💰"
+            )
+        with c4:
+            stat_card(
+                "Previsión gasto",
+                f"{fin['prevision']:.0f} €",
+                "Estimación mensual",
+                "🔮",
+            )
+
+        finanzas = cargar("finanzas")
+        if not finanzas.empty:
+            hoy = date.today()
+            fin_mes = finanzas[
+                (pd.to_datetime(finanzas["fecha"]).dt.month == hoy.month)
+                & (pd.to_datetime(finanzas["fecha"]).dt.year == hoy.year)
+            ]
+            gastos_df = fin_mes[fin_mes["tipo"] == "Gasto"]
+            if not gastos_df.empty:
+                st.plotly_chart(
+                    px.pie(
+                        gastos_df,
+                        names="categoria",
+                        values="cantidad",
+                        title="Gastos por categoría",
+                    ),
+                    use_container_width=True,
+                )
+
+    elif vista == "Movimientos":
+        section_header("💳 Movimientos", "Añade ingresos y gastos.")
+        with st.form("form_fin"):
+            c1, c2, c3 = st.columns(3)
+            fecha = c1.date_input("Fecha", value=date.today(), key="fecha_fin")
+            tipo = c2.selectbox("Tipo", ["Gasto", "Ingreso"])
+            cantidad = c3.number_input("Cantidad (€)", min_value=0.0, step=1.0)
+            categoria = st.selectbox(
+                "Categoría",
+                [
+                    "Comida",
+                    "Transporte",
+                    "Ocio",
+                    "Universidad",
+                    "Viajes",
+                    "Salud",
+                    "Deporte",
+                    "Ingresos",
+                    "Otros",
+                ],
+            )
+            desc = st.text_input("Descripción")
+            if st.form_submit_button("Guardar") and cantidad > 0:
+                add(
+                    "finanzas",
+                    {
+                        "fecha": fecha,
+                        "tipo": tipo,
+                        "categoria": categoria,
+                        "descripcion": desc,
+                        "cantidad": cantidad,
+                    },
+                )
+                st.rerun()
+        tabla_simple("finanzas")
+
+    elif vista == "Presupuestos":
+        section_header("📊 Presupuestos", "Controla límites por categoría.")
+        presupuestos = cargar("presupuestos")
+        finanzas = cargar("finanzas")
         with st.form("form_pres"):
             c1, c2 = st.columns(2)
             cat = c1.selectbox(
@@ -1275,28 +1386,22 @@ with tabs[6]:
                 else:
                     update("presupuestos", viejo.iloc[0]["id"], {"limite_mensual": lim})
                 st.rerun()
-
-    if finanzas.empty:
-        st.info("Sin movimientos.")
-    else:
-        hoy = date.today()
-        fin_mes = finanzas[
-            (pd.to_datetime(finanzas["fecha"]).dt.month == hoy.month)
-            & (pd.to_datetime(finanzas["fecha"]).dt.year == hoy.year)
-        ]
-        ingresos = fin_mes[fin_mes["tipo"] == "Ingreso"]["cantidad"].sum()
-        gastos = fin_mes[fin_mes["tipo"] == "Gasto"]["cantidad"].sum()
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Ingresos mes", f"{ingresos:.2f} €")
-        c2.metric("Gastos mes", f"{gastos:.2f} €")
-        c3.metric("Balance", f"{ingresos-gastos:.2f} €")
-
         if not presupuestos.empty:
+            hoy = date.today()
+            fin_mes = (
+                finanzas[
+                    (pd.to_datetime(finanzas["fecha"]).dt.month == hoy.month)
+                    & (pd.to_datetime(finanzas["fecha"]).dt.year == hoy.year)
+                ]
+                if not finanzas.empty
+                else pd.DataFrame()
+            )
             gastos_mes = (
                 fin_mes[fin_mes["tipo"] == "Gasto"]
                 .groupby("categoria", as_index=False)["cantidad"]
                 .sum()
+                if not fin_mes.empty
+                else pd.DataFrame(columns=["categoria", "cantidad"])
             )
             control = presupuestos.merge(gastos_mes, on="categoria", how="left").fillna(
                 {"cantidad": 0}
@@ -1305,424 +1410,314 @@ with tabs[6]:
             control["uso_%"] = (
                 control["cantidad"] / control["limite_mensual"] * 100
             ).round(1)
-            st.subheader("Control de presupuestos")
             st.dataframe(control, use_container_width=True)
+        else:
+            st.info("No hay presupuestos.")
 
-        gastos_df = fin_mes[fin_mes["tipo"] == "Gasto"]
-        if not gastos_df.empty:
-            st.plotly_chart(
-                px.pie(
-                    gastos_df,
-                    names="categoria",
-                    values="cantidad",
-                    title="Gastos del mes",
-                ),
-                use_container_width=True,
+    elif vista == "Suscripciones":
+        section_header("💳 Suscripciones", "Pagos recurrentes.")
+        with st.form("form_sus"):
+            nombre = st.text_input("Nombre")
+            c1, c2, c3 = st.columns(3)
+            cat = c1.selectbox(
+                "Categoría",
+                ["Streaming", "Software", "Deporte", "Estudios", "Servicios", "Otro"],
             )
-
-        st.dataframe(
-            finanzas.sort_values("fecha", ascending=False), use_container_width=True
-        )
-
-
-# ---------------- SECCIONES SIMPLES ----------------
-
-
-def seccion_suscripciones():
-    with st.form("form_sus"):
-        nombre = st.text_input("Nombre")
-        c1, c2, c3 = st.columns(3)
-        cat = c1.selectbox(
-            "Categoría",
-            ["Streaming", "Software", "Deporte", "Estudios", "Servicios", "Otro"],
-        )
-        coste = c2.number_input("Coste mensual (€)", min_value=0.0, step=1.0)
-        dia = c3.number_input("Día cobro", min_value=1, max_value=31, value=1)
-        estado = st.selectbox("Estado", ["Activa", "Pausada", "Cancelada"])
-        if st.form_submit_button("Añadir") and nombre.strip():
-            add(
-                "suscripciones",
-                {
-                    "nombre": nombre,
-                    "categoria": cat,
-                    "coste": coste,
-                    "dia_cobro": dia,
-                    "estado": estado,
-                },
-            )
-            st.rerun()
-    df = cargar("suscripciones")
-    if not df.empty:
-        st.metric(
-            "Coste mensual activo", f"{df[df['estado']=='Activa']['coste'].sum():.2f} €"
-        )
-        st.metric(
-            "Coste anual activo",
-            f"{df[df['estado']=='Activa']['coste'].sum()*12:.2f} €",
-        )
-    tabla_simple("suscripciones")
-
-
-def seccion_wishlist():
-    with st.form("form_wish"):
-        item = st.text_input("Nombre")
-        precio = st.number_input("Precio (€)", min_value=0.0, step=1.0)
-        pr = st.selectbox("Prioridad", ["Alta", "Media", "Baja"])
-        est = st.selectbox("Estado", ["Pendiente", "Comprado", "Descartado"])
-        url = st.text_input("URL")
-        if st.form_submit_button("Añadir") and item.strip():
-            add(
-                "wishlist",
-                {
-                    "nombre": item,
-                    "precio": precio,
-                    "prioridad": pr,
-                    "estado": est,
-                    "url": url,
-                },
-            )
-            st.rerun()
-    df = cargar("wishlist")
-    if not df.empty:
-        st.metric(
-            "Total pendiente", f"{df[df['estado']=='Pendiente']['precio'].sum():.2f} €"
-        )
-    tabla_simple("wishlist")
-
-
-def seccion_compras():
-    with st.form("form_compra"):
-        item = st.text_input("Producto")
-        cat = st.selectbox(
-            "Categoría", ["Comida", "Casa", "Higiene", "Deporte", "Universidad", "Otro"]
-        )
-        cant = st.text_input("Cantidad")
-        if st.form_submit_button("Añadir") and item.strip():
-            add(
-                "compras",
-                {"item": item, "categoria": cat, "cantidad": cant, "comprado": False},
-            )
-            st.rerun()
-    df = cargar("compras")
-    if df.empty:
-        st.info("Lista vacía.")
-    else:
-        for _, r in df.iterrows():
-            check = st.checkbox(
-                f"{r['item']} ({r['cantidad']})",
-                value=bool(r["comprado"]),
-                key=f"compr_{r['id']}",
-            )
-            if check != r["comprado"]:
-                update("compras", r["id"], {"comprado": check})
+            coste = c2.number_input("Coste mensual (€)", min_value=0.0, step=1.0)
+            dia = c3.number_input("Día cobro", min_value=1, max_value=31, value=1)
+            estado = st.selectbox("Estado", ["Activa", "Pausada", "Cancelada"])
+            if st.form_submit_button("Añadir") and nombre.strip():
+                add(
+                    "suscripciones",
+                    {
+                        "nombre": nombre,
+                        "categoria": cat,
+                        "coste": coste,
+                        "dia_cobro": dia,
+                        "estado": estado,
+                    },
+                )
                 st.rerun()
-
-
-def seccion_objetivos():
-    with st.form("form_obj"):
-        obj = st.text_input("Objetivo")
-        c1, c2, c3 = st.columns(3)
-        cat = c1.selectbox(
-            "Categoría",
-            ["Personal", "Estudios", "Deporte", "Dinero", "Viajes", "Trabajo", "Otro"],
-        )
-        prog = c2.slider("Progreso", 0, 100, 0)
-        est = c3.selectbox("Estado", ["Activo", "Completado", "Pausado"])
-        fecha = st.date_input("Fecha límite", value=date.today())
-        if st.form_submit_button("Guardar") and obj.strip():
-            add(
-                "objetivos",
-                {
-                    "objetivo": obj,
-                    "categoria": cat,
-                    "progreso": prog,
-                    "fecha_limite": fecha,
-                    "estado": est,
-                },
+        df = cargar("suscripciones")
+        if not df.empty:
+            st.metric(
+                "Coste mensual activo",
+                f"{df[df['estado']=='Activa']['coste'].sum():.2f} €",
             )
-            st.rerun()
-    tabla_simple("objetivos")
+        tabla_simple("suscripciones")
 
-
-def seccion_proyectos():
-    with st.form("form_proy"):
-        proy = st.text_input("Proyecto")
-        tarea = st.text_input("Tarea")
-        estado = st.selectbox("Estado", ["Pendiente", "En curso", "Hecho"])
-        pr = st.selectbox("Prioridad", ["Alta", "Media", "Baja"])
-        if st.form_submit_button("Añadir") and proy.strip() and tarea.strip():
-            add(
-                "proyectos",
-                {"proyecto": proy, "tarea": tarea, "estado": estado, "prioridad": pr},
-            )
-            st.rerun()
-
-    df = cargar("proyectos")
-    if df.empty:
-        st.info("No hay proyectos.")
     else:
-        for p in df["proyecto"].unique():
-            st.markdown(f"### {p}")
-            st.dataframe(df[df["proyecto"] == p], use_container_width=True)
-
-
-def seccion_universidad():
-    with st.form("form_uni"):
-        asig = st.text_input("Asignatura")
-        c1, c2, c3 = st.columns(3)
-        tipo = c1.selectbox(
-            "Tipo", ["Examen", "Práctica", "Trabajo", "Clase", "Entrega", "Otro"]
-        )
-        fecha = c2.date_input("Fecha", value=date.today())
-        pr = c3.selectbox("Prioridad", ["Alta", "Media", "Baja"])
-        desc = st.text_input("Descripción")
-        est = st.selectbox("Estado", ["Pendiente", "En curso", "Hecho"])
-        if st.form_submit_button("Guardar") and asig.strip():
-            add(
-                "universidad",
-                {
-                    "asignatura": asig,
-                    "tipo": tipo,
-                    "descripcion": desc,
-                    "fecha": fecha,
-                    "estado": est,
-                    "prioridad": pr,
-                },
+        section_header("⭐ Wishlist", "Lista de deseos con precio.")
+        with st.form("form_wish"):
+            item = st.text_input("Nombre")
+            precio = st.number_input("Precio (€)", min_value=0.0, step=1.0)
+            pr = st.selectbox("Prioridad", ["Alta", "Media", "Baja"])
+            est = st.selectbox("Estado", ["Pendiente", "Comprado", "Descartado"])
+            url = st.text_input("URL")
+            if st.form_submit_button("Añadir") and item.strip():
+                add(
+                    "wishlist",
+                    {
+                        "nombre": item,
+                        "precio": precio,
+                        "prioridad": pr,
+                        "estado": est,
+                        "url": url,
+                    },
+                )
+                st.rerun()
+        df = cargar("wishlist")
+        if not df.empty:
+            st.metric(
+                "Total pendiente",
+                f"{df[df['estado']=='Pendiente']['precio'].sum():.2f} €",
             )
-            st.rerun()
-    tabla_simple("universidad")
+        tabla_simple("wishlist")
 
 
-def seccion_viajes():
-    with st.form("form_viaje"):
-        viaje = st.text_input("Viaje")
-        c1, c2, c3 = st.columns(3)
-        tipo = c1.selectbox(
-            "Tipo",
-            [
-                "Vuelo",
-                "Alojamiento",
-                "Transporte",
-                "Checklist",
-                "Gasto",
-                "Documento",
-                "Otro",
-            ],
-        )
-        fecha = c2.date_input("Fecha", value=date.today())
-        coste = c3.number_input("Coste (€)", min_value=0.0, step=1.0)
-        desc = st.text_input("Descripción")
-        est = st.selectbox("Estado", ["Pendiente", "Reservado", "Pagado", "Hecho"])
-        if st.form_submit_button("Guardar") and viaje.strip():
-            add(
-                "viajes",
-                {
-                    "viaje": viaje,
-                    "tipo": tipo,
-                    "descripcion": desc,
-                    "fecha": fecha,
-                    "coste": coste,
-                    "estado": est,
-                },
+def page_vida():
+    vista = st.radio(
+        "Vida", ["Calendario", "Universidad", "Viajes", "Compras"], horizontal=True
+    )
+
+    if vista == "Calendario":
+        section_header("📅 Calendario", "Eventos y recordatorios.")
+        with st.form("form_evento"):
+            c1, c2 = st.columns(2)
+            fecha = c1.date_input("Fecha", value=date.today(), key="fecha_evento")
+            hora = c2.text_input("Hora", placeholder="Ej: 18:30")
+            titulo = st.text_input("Título")
+            categoria = st.selectbox(
+                "Categoría",
+                ["Personal", "Universidad", "Trabajo", "Viaje", "Cita", "Otro"],
             )
-            st.rerun()
-    df = cargar("viajes")
-    if not df.empty:
-        st.metric("Coste total", f"{df['coste'].sum():.2f} €")
-    tabla_simple("viajes")
+            notas = st.text_area("Notas")
+            if st.form_submit_button("Añadir") and titulo.strip():
+                add(
+                    "calendario",
+                    {
+                        "fecha": fecha,
+                        "hora": hora,
+                        "titulo": titulo,
+                        "categoria": categoria,
+                        "notas": notas,
+                    },
+                )
+                st.rerun()
+        tabla_simple("calendario")
 
-
-def seccion_notas():
-    with st.form("form_nota"):
-        titulo = st.text_input("Título")
-        cat = st.selectbox(
-            "Categoría",
-            ["Idea", "Recordatorio", "Universidad", "Proyecto", "Personal", "Otro"],
-        )
-        vinculo = st.text_input(
-            "Vincular a proyecto/tema", placeholder="Ej: RUNATICS, Erasmus, Universidad"
-        )
-        nota = st.text_area("Nota")
-        if st.form_submit_button("Guardar") and nota.strip():
-            add(
-                "notas",
-                {
-                    "fecha": date.today(),
-                    "titulo": titulo,
-                    "nota": nota,
-                    "categoria": cat,
-                    "vinculo": vinculo,
-                },
+    elif vista == "Universidad":
+        section_header("🎓 Universidad", "Exámenes, prácticas y entregas.")
+        with st.form("form_uni"):
+            asig = st.text_input("Asignatura")
+            c1, c2, c3 = st.columns(3)
+            tipo = c1.selectbox(
+                "Tipo", ["Examen", "Práctica", "Trabajo", "Clase", "Entrega", "Otro"]
             )
-            st.rerun()
+            fecha = c2.date_input("Fecha", value=date.today())
+            pr = c3.selectbox("Prioridad", ["Alta", "Media", "Baja"])
+            desc = st.text_input("Descripción")
+            est = st.selectbox("Estado", ["Pendiente", "En curso", "Hecho"])
+            if st.form_submit_button("Guardar") and asig.strip():
+                add(
+                    "universidad",
+                    {
+                        "asignatura": asig,
+                        "tipo": tipo,
+                        "descripcion": desc,
+                        "fecha": fecha,
+                        "estado": est,
+                        "prioridad": pr,
+                    },
+                )
+                st.rerun()
+        tabla_simple("universidad")
 
-    df = cargar("notas")
-    if df.empty:
-        st.info("No hay notas.")
+    elif vista == "Viajes":
+        section_header("✈️ Viajes", "Checklist, costes y documentos.")
+        with st.form("form_viaje"):
+            viaje = st.text_input("Viaje")
+            c1, c2, c3 = st.columns(3)
+            tipo = c1.selectbox(
+                "Tipo",
+                [
+                    "Vuelo",
+                    "Alojamiento",
+                    "Transporte",
+                    "Checklist",
+                    "Gasto",
+                    "Documento",
+                    "Otro",
+                ],
+            )
+            fecha = c2.date_input("Fecha", value=date.today())
+            coste = c3.number_input("Coste (€)", min_value=0.0, step=1.0)
+            desc = st.text_input("Descripción")
+            est = st.selectbox("Estado", ["Pendiente", "Reservado", "Pagado", "Hecho"])
+            if st.form_submit_button("Guardar") and viaje.strip():
+                add(
+                    "viajes",
+                    {
+                        "viaje": viaje,
+                        "tipo": tipo,
+                        "descripcion": desc,
+                        "fecha": fecha,
+                        "coste": coste,
+                        "estado": est,
+                    },
+                )
+                st.rerun()
+        df = cargar("viajes")
+        if not df.empty:
+            st.metric("Coste total", f"{df['coste'].sum():.2f} €")
+        tabla_simple("viajes")
+
     else:
-        for _, r in df.sort_values("fecha", ascending=False).iterrows():
-            with st.expander(f"{r['fecha']} - {r['titulo']}"):
-                st.caption(f"{r['categoria']} | Vinculo: {r.get('vinculo', '')}")
-                st.write(r["nota"])
-
-
-with tabs[7]:
-    st.subheader("💳 Suscripciones")
-    seccion_suscripciones()
-
-with tabs[8]:
-    st.subheader("⭐ Wishlist")
-    seccion_wishlist()
-
-with tabs[9]:
-    st.subheader("🛒 Compras")
-    seccion_compras()
-
-with tabs[10]:
-    st.subheader("🎯 Objetivos")
-    seccion_objetivos()
-
-with tabs[11]:
-    st.subheader("📚 Proyectos")
-    seccion_proyectos()
-
-with tabs[12]:
-    st.subheader("🎓 Universidad")
-    seccion_universidad()
-
-with tabs[13]:
-    st.subheader("✈️ Viajes")
-    seccion_viajes()
-
-with tabs[14]:
-    st.subheader("📝 Notas")
-    seccion_notas()
-
-
-# ---------------- ARCHIVOS ----------------
-
-with tabs[15]:
-    st.subheader("📂 Archivos adjuntos")
-
-    with st.form("form_archivo"):
-        archivo = st.file_uploader("Subir archivo")
-        categoria = st.selectbox(
-            "Categoría",
-            ["Universidad", "Viaje", "Proyecto", "Personal", "Finanzas", "Otro"],
-        )
-        vinculo = st.text_input(
-            "Vincular a proyecto/tema", placeholder="Ej: Erasmus, RUNATICS, Empresa"
-        )
-        subir = st.form_submit_button("Guardar archivo")
-
-        if subir and archivo is not None:
-            safe_name = f"{new_id()}_{archivo.name}"
-            ruta = os.path.join(FILES_DIR, safe_name)
-            with open(ruta, "wb") as f:
-                f.write(archivo.getbuffer())
-
-            add(
-                "archivos",
-                {
-                    "fecha": date.today(),
-                    "nombre": archivo.name,
-                    "categoria": categoria,
-                    "vinculo": vinculo,
-                    "ruta": ruta,
-                },
+        section_header("🛒 Compras", "Lista rápida de compra.")
+        with st.form("form_compra"):
+            item = st.text_input("Producto")
+            cat = st.selectbox(
+                "Categoría",
+                ["Comida", "Casa", "Higiene", "Deporte", "Universidad", "Otro"],
             )
-            st.success("Archivo guardado.")
-            st.rerun()
+            cant = st.text_input("Cantidad")
+            if st.form_submit_button("Añadir") and item.strip():
+                add(
+                    "compras",
+                    {
+                        "item": item,
+                        "categoria": cat,
+                        "cantidad": cant,
+                        "comprado": False,
+                    },
+                )
+                st.rerun()
+        df = cargar("compras")
+        if df.empty:
+            st.info("Lista vacía.")
+        else:
+            for _, r in df.iterrows():
+                check = st.checkbox(
+                    f"{r['item']} ({r['cantidad']})",
+                    value=bool(r["comprado"]),
+                    key=f"compr_{r['id']}",
+                )
+                if check != r["comprado"]:
+                    update("compras", r["id"], {"comprado": check})
+                    st.rerun()
 
-    archivos = cargar("archivos")
-    if archivos.empty:
-        st.info("No hay archivos.")
+
+def page_conocimiento():
+    vista = st.radio("Conocimiento", ["Notas", "Archivos", "Buscar"], horizontal=True)
+
+    if vista == "Notas":
+        section_header("📝 Notas", "Ideas, recordatorios y apuntes.")
+        with st.form("form_nota"):
+            titulo = st.text_input("Título")
+            cat = st.selectbox(
+                "Categoría",
+                ["Idea", "Recordatorio", "Universidad", "Proyecto", "Personal", "Otro"],
+            )
+            vinculo = st.text_input(
+                "Vincular a proyecto/tema", placeholder="Ej: Erasmus, Universidad"
+            )
+            nota = st.text_area("Nota")
+            if st.form_submit_button("Guardar") and nota.strip():
+                add(
+                    "notas",
+                    {
+                        "fecha": date.today(),
+                        "titulo": titulo,
+                        "nota": nota,
+                        "categoria": cat,
+                        "vinculo": vinculo,
+                    },
+                )
+                st.rerun()
+        df = cargar("notas")
+        if df.empty:
+            st.info("No hay notas.")
+        else:
+            for _, r in df.sort_values("fecha", ascending=False).iterrows():
+                with st.expander(f"{r['fecha']} - {r['titulo']}"):
+                    st.caption(f"{r['categoria']} · Vínculo: {r.get('vinculo', '')}")
+                    st.write(r["nota"])
+
+    elif vista == "Archivos":
+        section_header("📂 Archivos", "Metadatos en nube. Storage completo pendiente.")
+        st.warning(
+            "Los metadatos se sincronizan en Supabase. Los archivos físicos todavía se guardan localmente."
+        )
+        with st.form("form_archivo"):
+            archivo = st.file_uploader("Subir archivo")
+            categoria = st.selectbox(
+                "Categoría",
+                ["Universidad", "Viaje", "Proyecto", "Personal", "Finanzas", "Otro"],
+            )
+            vinculo = st.text_input(
+                "Vincular a proyecto/tema", placeholder="Ej: Erasmus, Empresa"
+            )
+            subir = st.form_submit_button("Guardar archivo")
+            if subir and archivo is not None:
+                safe_name = f"{str(uuid.uuid4())[:8]}_{archivo.name}"
+                ruta = os.path.join(FILES_DIR, safe_name)
+                with open(ruta, "wb") as f:
+                    f.write(archivo.getbuffer())
+                add(
+                    "archivos",
+                    {
+                        "fecha": date.today(),
+                        "nombre": archivo.name,
+                        "categoria": categoria,
+                        "vinculo": vinculo,
+                        "ruta": ruta,
+                    },
+                )
+                st.rerun()
+        tabla_simple("archivos")
+
     else:
-        st.dataframe(archivos, use_container_width=True)
+        section_header("🔎 Buscar", "Busca en toda tu información.")
+        q = st.text_input("Buscar")
+        res = buscar(q)
+        if q and res.empty:
+            st.info("No se encontraron resultados.")
+        elif not res.empty:
+            st.dataframe(res, use_container_width=True)
 
 
-# ---------------- CEREBRO ----------------
-
-with tabs[16]:
-    st.subheader("🧠 Segundo cerebro")
-
-    proyectos = cargar("proyectos")
-    notas = cargar("notas")
-    archivos = cargar("archivos")
-    tareas = cargar("tareas")
-    viajes = cargar("viajes")
-    uni = cargar("universidad")
-
-    temas = set()
-
-    for df_, col in [
-        (proyectos, "proyecto"),
-        (notas, "vinculo"),
-        (archivos, "vinculo"),
-        (viajes, "viaje"),
-        (uni, "asignatura"),
-    ]:
-        if not df_.empty and col in df_.columns:
-            temas.update([str(x) for x in df_[col].dropna().unique() if str(x).strip()])
-
-    if not temas:
-        st.info(
-            "Todavía no hay temas vinculados. Usa el campo 'vincular' en notas o archivos."
-        )
-    else:
-        tema = st.selectbox("Tema/proyecto", sorted(temas))
-
-        st.markdown(f"## {tema}")
-
-        st.subheader("Notas relacionadas")
-        rel_notas = (
-            notas[notas["vinculo"].astype(str).str.lower() == tema.lower()]
-            if not notas.empty
-            else pd.DataFrame()
-        )
-        st.dataframe(rel_notas, use_container_width=True)
-
-        st.subheader("Archivos relacionados")
-        rel_arch = (
-            archivos[archivos["vinculo"].astype(str).str.lower() == tema.lower()]
-            if not archivos.empty
-            else pd.DataFrame()
-        )
-        st.dataframe(rel_arch, use_container_width=True)
-
-        st.subheader("Tareas/proyectos relacionados")
-        rel_proy = (
-            proyectos[proyectos["proyecto"].astype(str).str.lower() == tema.lower()]
-            if not proyectos.empty
-            else pd.DataFrame()
-        )
-        st.dataframe(rel_proy, use_container_width=True)
+def page_ia():
+    section_header(
+        "🤖 Asistente IA",
+        "Pregunta sobre tus tareas, finanzas, estudios y planificación.",
+    )
+    pregunta = st.text_area(
+        "Pregunta", placeholder="Ej: ¿Qué debería priorizar esta semana?"
+    )
+    if st.button("Preguntar") and pregunta.strip():
+        with st.spinner("Analizando tus datos..."):
+            st.markdown(preguntar_ia(pregunta))
 
 
-# ---------------- ESTADÍSTICAS ----------------
-
-with tabs[17]:
-    st.subheader("📊 Estadísticas")
-
-    tareas = cargar("tareas")
-    finanzas = cargar("finanzas")
-    objetivos = cargar("objetivos")
-    log = cargar("habitos_log")
-
+def page_estadisticas():
+    section_header("📊 Estadísticas", "Rendimiento personal y finanzas.")
+    tareas, finanzas, objetivos, log = (
+        cargar("tareas"),
+        cargar("finanzas"),
+        cargar("objetivos"),
+        cargar("habitos_log"),
+    )
     xp, nivel, resto = calcular_nivel()
-
     c1, c2, c3 = st.columns(3)
-    c1.metric("Nivel", nivel)
-    c2.metric("XP total", xp)
-    c3.metric("Productividad 7 días", f"{productividad_score()}%")
+    with c1:
+        stat_card("Nivel", nivel, f"{xp} XP total", "🏆")
+    with c2:
+        stat_card("Productividad", f"{productividad_score()}%", "Últimos 7 días", "📊")
+    with c3:
+        stat_card("Progreso nivel", f"{resto}/250", "XP restante", "⚡")
 
     if not tareas.empty:
         comp = tareas["completada"].sum()
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Tareas completadas", int(comp))
-        c2.metric("Tareas totales", len(tareas))
-        c3.metric("Ratio", f"{comp/len(tareas)*100:.1f}%")
-
         st.plotly_chart(
             px.bar(
                 tareas.groupby("fecha", as_index=False)["completada"].sum(),
@@ -1732,7 +1727,6 @@ with tabs[17]:
             ),
             use_container_width=True,
         )
-
     if not finanzas.empty:
         f = finanzas.copy()
         f["mes"] = pd.to_datetime(f["fecha"]).dt.to_period("M").astype(str)
@@ -1747,7 +1741,6 @@ with tabs[17]:
             ),
             use_container_width=True,
         )
-
     if not objetivos.empty:
         st.plotly_chart(
             px.bar(
@@ -1759,7 +1752,6 @@ with tabs[17]:
             ),
             use_container_width=True,
         )
-
     if not log.empty:
         st.plotly_chart(
             px.line(
@@ -1773,63 +1765,94 @@ with tabs[17]:
         )
 
 
-# ---------------- COPIAS / NUBE ----------------
-
-with tabs[18]:
-    st.subheader("☁️ Copias y sincronización")
-
-    st.warning(
-        "Sincronización nube real pendiente. Esta pestaña deja preparada la exportación/importación manual de datos."
-    )
-
+def page_ajustes():
+    section_header("⚙️ Ajustes", "Sesión, copias y sincronización.")
+    st.success("Datos principales sincronizados en Supabase.")
     st.download_button(
-        "Descargar copia ZIP del usuario actual",
+        "Descargar copia ZIP local",
         data=exportar_zip_usuario(),
-        file_name=f"life_os_backup_{usuario_actual}.zip",
+        file_name=f"life_os_backup_{slug(usuario_email)}.zip",
         mime="application/zip",
     )
-
-    st.divider()
-
-    st.subheader("Importar copia ZIP")
-
-    archivo_zip = st.file_uploader("Selecciona un ZIP exportado", type=["zip"])
-    if st.button("Importar ZIP") and archivo_zip is not None:
-        tmp = os.path.join(USER_DIR, "_tmp_import.zip")
-        with open(tmp, "wb") as f:
-            f.write(archivo_zip.getbuffer())
-
-        with zipfile.ZipFile(tmp, "r") as z:
-            z.extractall(USER_DIR)
-
-        os.remove(tmp)
-        st.success("Copia importada. Reinicia la app si no ves los cambios.")
-        st.rerun()
-
-    st.divider()
-
-    st.subheader("Próximos pasos para nube real")
-    st.write("""
-    Opciones recomendadas:
-    - Supabase: base de datos online sencilla.
-    - Google Sheets: fácil de mantener, menos robusto.
-    - Firebase: buena opción si luego haces APK.
-    - GitHub privado: útil para backups, no ideal como base de datos.
-    """)
-
-
-# ---------------- IA ----------------
-
-with tabs[19]:
-    st.subheader("🤖 Asistente IA")
-
-    st.info(
-        "Opcional: instala google-generativeai y crea .streamlit/secrets.toml con GEMINI_API_KEY."
+    st.caption(
+        "El ZIP es una copia local de respaldo. Los datos principales viven en Supabase."
     )
 
-    pregunta = st.text_area(
-        "Pregunta", placeholder="Ej: ¿Qué debería priorizar esta semana?"
-    )
-    if st.button("Preguntar") and pregunta.strip():
-        with st.spinner("Analizando tus datos..."):
-            st.markdown(preguntar_ia(pregunta))
+
+generar_repeticiones()
+
+
+# ============================================================
+# SIDEBAR NAV
+# ============================================================
+
+st.sidebar.markdown(
+    f"""
+    <div class="sidebar-brand">
+        <div class="sidebar-brand-title">LIFE OS</div>
+        <div class="sidebar-brand-sub">{usuario_email}</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+xp, nivel, resto = calcular_nivel()
+st.sidebar.metric("Nivel", nivel)
+st.sidebar.progress(resto / 250)
+st.sidebar.caption(f"XP total: {xp}")
+
+st.sidebar.divider()
+
+nav = st.sidebar.radio(
+    "Navegación",
+    [
+        "🏠 Dashboard",
+        "📱 Rápido",
+        "📋 Productividad",
+        "💰 Finanzas",
+        "🎓 Vida",
+        "🧠 Conocimiento",
+        "📊 Estadísticas",
+        "🤖 IA",
+        "⚙️ Ajustes",
+    ],
+)
+
+st.sidebar.divider()
+st.sidebar.subheader("🔔 Avisos")
+for icono, titulo, texto in notificaciones()[:4]:
+    st.sidebar.markdown(f"**{icono} {titulo}**")
+    st.sidebar.caption(texto)
+
+st.sidebar.divider()
+if st.sidebar.button("Cerrar sesión"):
+    try:
+        supabase.auth.sign_out()
+    except Exception:
+        pass
+    st.session_state.clear()
+    st.rerun()
+
+
+# ============================================================
+# ROUTER
+# ============================================================
+
+if nav == "🏠 Dashboard":
+    page_dashboard()
+elif nav == "📱 Rápido":
+    page_rapido()
+elif nav == "📋 Productividad":
+    page_productividad()
+elif nav == "💰 Finanzas":
+    page_finanzas()
+elif nav == "🎓 Vida":
+    page_vida()
+elif nav == "🧠 Conocimiento":
+    page_conocimiento()
+elif nav == "📊 Estadísticas":
+    page_estadisticas()
+elif nav == "🤖 IA":
+    page_ia()
+elif nav == "⚙️ Ajustes":
+    page_ajustes()
