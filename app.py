@@ -202,53 +202,248 @@ def update(nombre, item_id, cambios):
     guardar(nombre, df)
 
 
-def usuarios_disponibles():
-    usuarios = set()
-    try:
-        res = supabase.table("life_os_items").select("user_id").execute()
-        for r in res.data or []:
-            if r.get("user_id"):
-                usuarios.add(r["user_id"])
-    except Exception:
-        pass
-    if os.path.exists(BASE_DATA_DIR):
-        for d in os.listdir(BASE_DATA_DIR):
-            if os.path.isdir(os.path.join(BASE_DATA_DIR, d)):
-                usuarios.add(d)
-    if not usuarios:
-        usuarios.add("pablo")
-    return sorted(usuarios)
-
+# ============================================================
+# LOGIN REAL / USUARIOS
+# ============================================================
 
 st.sidebar.title(APP_NAME)
-st.sidebar.caption("Centro personal multiusuario en la nube")
-usuarios = usuarios_disponibles()
-if "usuario_actual" not in st.session_state:
-    st.session_state["usuario_actual"] = usuarios[0]
-usuario_actual = st.sidebar.selectbox(
-    "Usuario",
-    usuarios,
-    index=(
-        usuarios.index(st.session_state["usuario_actual"])
-        if st.session_state["usuario_actual"] in usuarios
-        else 0
-    ),
-)
-st.session_state["usuario_actual"] = usuario_actual
+st.sidebar.caption("Centro personal con login real")
 
-nuevo_usuario = st.sidebar.text_input("Crear nuevo usuario")
-if st.sidebar.button("Crear usuario") and nuevo_usuario.strip():
-    nuevo = slug(nuevo_usuario)
-    st.session_state["usuario_actual"] = nuevo
-    os.makedirs(os.path.join(BASE_DATA_DIR, nuevo, "archivos"), exist_ok=True)
-    usuario_actual = nuevo
-    add("config", {"clave": "usuario_creado", "valor": "true"})
+
+def login_screen():
+    st.title(APP_NAME)
+    st.caption("Inicia sesión para acceder a tus datos sincronizados en Supabase.")
+
+    modo = st.radio("Acceso", ["Iniciar sesión", "Crear cuenta"], horizontal=True)
+    email = st.text_input("Email")
+    password = st.text_input("Contraseña", type="password")
+
+    if modo == "Iniciar sesión":
+        if st.button("Entrar"):
+            if not email.strip() or not password.strip():
+                st.error("Introduce email y contraseña.")
+            else:
+                try:
+                    res = supabase.auth.sign_in_with_password(
+                        {"email": email, "password": password}
+                    )
+                    st.session_state["auth_user_id"] = res.user.id
+                    st.session_state["auth_email"] = res.user.email
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"No se pudo iniciar sesión: {e}")
+    else:
+        st.info(
+            "La cuenta se crea en Supabase Auth. Si Supabase pide confirmar email, revisa tu correo."
+        )
+        if st.button("Crear cuenta"):
+            if not email.strip() or not password.strip():
+                st.error("Introduce email y contraseña.")
+            elif len(password) < 6:
+                st.error("La contraseña debe tener al menos 6 caracteres.")
+            else:
+                try:
+                    supabase.auth.sign_up({"email": email, "password": password})
+                    st.success(
+                        "Cuenta creada. Si Supabase pide confirmación, revisa tu correo. Después inicia sesión."
+                    )
+                except Exception as e:
+                    st.error(f"No se pudo crear la cuenta: {e}")
+
+
+if "auth_user_id" not in st.session_state:
+    login_screen()
+    st.stop()
+
+usuario_actual = st.session_state["auth_user_id"]
+usuario_email = st.session_state.get("auth_email", "usuario")
+
+st.sidebar.success(f"Sesión iniciada: {usuario_email}")
+
+if st.sidebar.button("Cerrar sesión"):
+    try:
+        supabase.auth.sign_out()
+    except Exception:
+        pass
+    st.session_state.clear()
     st.rerun()
 
-USER_DIR = os.path.join(BASE_DATA_DIR, usuario_actual)
+USER_DIR = os.path.join(BASE_DATA_DIR, slug(usuario_email))
 FILES_DIR = os.path.join(USER_DIR, "archivos")
 os.makedirs(FILES_DIR, exist_ok=True)
-st.sidebar.success(f"Usuario activo: {usuario_actual}")
+
+
+def notificaciones_internas():
+    hoy = date.today()
+    avisos = []
+
+    tareas = cargar("tareas")
+    if not tareas.empty:
+        vencidas = tareas[(tareas["fecha"] < hoy) & (~tareas["completada"])]
+        altas_hoy = tareas[
+            (tareas["fecha"] == hoy)
+            & (~tareas["completada"])
+            & (tareas["prioridad"] == "Alta")
+        ]
+        if not vencidas.empty:
+            avisos.append(
+                (
+                    "🔴",
+                    "Tareas vencidas",
+                    f"Tienes {len(vencidas)} tarea(s) vencidas sin completar.",
+                )
+            )
+        if not altas_hoy.empty:
+            avisos.append(
+                (
+                    "🟠",
+                    "Prioridad alta hoy",
+                    f"Tienes {len(altas_hoy)} tarea(s) de prioridad alta para hoy.",
+                )
+            )
+
+    uni = cargar("universidad")
+    if not uni.empty:
+        proximos = uni[
+            (uni["fecha"] >= hoy)
+            & (uni["fecha"] <= hoy + timedelta(days=7))
+            & (uni["estado"] != "Hecho")
+        ]
+        if not proximos.empty:
+            avisos.append(
+                (
+                    "🎓",
+                    "Universidad",
+                    f"Tienes {len(proximos)} elemento(s) universitarios en los próximos 7 días.",
+                )
+            )
+
+    sus = cargar("suscripciones")
+    if not sus.empty:
+        proximas = []
+        for _, r in sus[sus["estado"] == "Activa"].iterrows():
+            try:
+                d = int(r["dia_cobro"])
+                fc = date(hoy.year, hoy.month, min(max(d, 1), 28))
+                if fc < hoy:
+                    mes = hoy.month + 1
+                    año = hoy.year + (1 if mes == 13 else 0)
+                    mes = 1 if mes == 13 else mes
+                    fc = date(año, mes, min(max(d, 1), 28))
+                if hoy <= fc <= hoy + timedelta(days=7):
+                    proximas.append(str(r["nombre"]))
+            except Exception:
+                pass
+        if proximas:
+            avisos.append(
+                (
+                    "💳",
+                    "Pagos próximos",
+                    f"Próximas suscripciones: {', '.join(proximas[:3])}.",
+                )
+            )
+
+    finanzas = cargar("finanzas")
+    presupuestos = cargar("presupuestos")
+    if not finanzas.empty and not presupuestos.empty:
+        fin_mes = finanzas[
+            (pd.to_datetime(finanzas["fecha"]).dt.month == hoy.month)
+            & (pd.to_datetime(finanzas["fecha"]).dt.year == hoy.year)
+            & (finanzas["tipo"] == "Gasto")
+        ]
+        gastos_mes = fin_mes.groupby("categoria", as_index=False)["cantidad"].sum()
+        control = presupuestos.merge(gastos_mes, on="categoria", how="left").fillna(
+            {"cantidad": 0}
+        )
+        pasados = control[control["cantidad"] > control["limite_mensual"]]
+        cerca = control[
+            (control["cantidad"] <= control["limite_mensual"])
+            & (control["cantidad"] >= control["limite_mensual"] * 0.8)
+        ]
+        if not pasados.empty:
+            avisos.append(
+                (
+                    "🔴",
+                    "Presupuesto superado",
+                    f"Has superado el presupuesto de: {', '.join(pasados['categoria'].astype(str).tolist())}.",
+                )
+            )
+        elif not cerca.empty:
+            avisos.append(
+                (
+                    "🟡",
+                    "Presupuesto al límite",
+                    f"Estás cerca del límite en: {', '.join(cerca['categoria'].astype(str).tolist())}.",
+                )
+            )
+
+    if not avisos:
+        avisos.append(
+            ("✅", "Sin avisos importantes", "No tienes alertas críticas ahora mismo.")
+        )
+
+    return avisos
+
+
+def resumen_financiero_avanzado():
+    finanzas = cargar("finanzas")
+    sus = cargar("suscripciones")
+    presupuestos = cargar("presupuestos")
+    hoy = date.today()
+
+    if finanzas.empty:
+        return {
+            "ingresos": 0,
+            "gastos": 0,
+            "balance": 0,
+            "ahorro_pct": 0,
+            "prevision_gasto": 0,
+            "suscripciones": 0,
+            "top_categoria": "-",
+            "presupuesto_usado": 0,
+        }
+
+    fin_mes = finanzas[
+        (pd.to_datetime(finanzas["fecha"]).dt.month == hoy.month)
+        & (pd.to_datetime(finanzas["fecha"]).dt.year == hoy.year)
+    ]
+    ingresos = fin_mes[fin_mes["tipo"] == "Ingreso"]["cantidad"].sum()
+    gastos = fin_mes[fin_mes["tipo"] == "Gasto"]["cantidad"].sum()
+    balance = ingresos - gastos
+    ahorro_pct = round((balance / ingresos * 100), 1) if ingresos > 0 else 0
+    prevision_gasto = round(gastos / max(hoy.day, 1) * 31, 2) if gastos > 0 else 0
+
+    suscripciones = 0
+    if not sus.empty:
+        suscripciones = sus[sus["estado"] == "Activa"]["coste"].sum()
+
+    gastos_df = fin_mes[fin_mes["tipo"] == "Gasto"]
+    if not gastos_df.empty:
+        top = (
+            gastos_df.groupby("categoria")["cantidad"]
+            .sum()
+            .sort_values(ascending=False)
+        )
+        top_categoria = f"{top.index[0]} ({top.iloc[0]:.2f} €)"
+    else:
+        top_categoria = "-"
+
+    presupuesto_usado = 0
+    if not presupuestos.empty and not gastos_df.empty:
+        limite_total = presupuestos["limite_mensual"].sum()
+        if limite_total > 0:
+            presupuesto_usado = round(gastos / limite_total * 100, 1)
+
+    return {
+        "ingresos": ingresos,
+        "gastos": gastos,
+        "balance": balance,
+        "ahorro_pct": ahorro_pct,
+        "prevision_gasto": prevision_gasto,
+        "suscripciones": suscripciones,
+        "top_categoria": top_categoria,
+        "presupuesto_usado": presupuesto_usado,
+    }
 
 
 def generar_repeticiones():
@@ -522,6 +717,12 @@ xp, nivel, resto = calcular_nivel()
 st.sidebar.metric("Nivel", nivel)
 st.sidebar.progress(resto / 250)
 st.sidebar.caption(f"XP total: {xp}")
+
+st.sidebar.divider()
+st.sidebar.subheader("🔔 Avisos")
+for icono, titulo, texto in notificaciones_internas()[:5]:
+    st.sidebar.write(f"{icono} **{titulo}**")
+    st.sidebar.caption(texto)
 
 tabs = st.tabs(
     [
