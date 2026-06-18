@@ -330,6 +330,22 @@ def inject_css():
             font-size: .9rem;
         }
 
+
+        .top-nav-wrap {
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            padding: 10px 0 16px 0;
+            background: linear-gradient(180deg, rgba(7,10,18,.98), rgba(7,10,18,.70), rgba(7,10,18,0));
+            backdrop-filter: blur(12px);
+        }
+
+        .nav-help {
+            color: #94a3b8;
+            font-size: .9rem;
+            margin-bottom: 8px;
+        }
+
         @media (max-width: 900px) {
             .hero-title {
                 font-size: 2.3rem;
@@ -1802,23 +1818,6 @@ st.sidebar.progress(resto / 250)
 st.sidebar.caption(f"XP total: {xp}")
 
 st.sidebar.divider()
-
-nav = st.sidebar.radio(
-    "Navegación",
-    [
-        "🏠 Dashboard",
-        "📱 Rápido",
-        "📋 Productividad",
-        "💰 Finanzas",
-        "🎓 Vida",
-        "🧠 Conocimiento",
-        "📊 Estadísticas",
-        "🤖 IA",
-        "⚙️ Ajustes",
-    ],
-)
-
-st.sidebar.divider()
 st.sidebar.subheader("🔔 Avisos")
 for icono, titulo, texto in notificaciones()[:4]:
     st.sidebar.markdown(f"**{icono} {titulo}**")
@@ -1832,6 +1831,51 @@ if st.sidebar.button("Cerrar sesión"):
         pass
     st.session_state.clear()
     st.rerun()
+
+
+# ============================================================
+# NAVEGACIÓN PRINCIPAL SIEMPRE VISIBLE
+# ============================================================
+
+opciones_nav = [
+    "🏠 Dashboard",
+    "📱 Rápido",
+    "📋 Productividad",
+    "💰 Finanzas",
+    "🎓 Vida",
+    "🧠 Conocimiento",
+    "📊 Estadísticas",
+    "🤖 IA",
+    "⚙️ Ajustes",
+]
+
+if "nav_principal" not in st.session_state:
+    st.session_state["nav_principal"] = "🏠 Dashboard"
+
+st.markdown(
+    """
+    <div class="top-nav-wrap">
+        <div class="nav-help">Navegación principal</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+nav = st.radio(
+    "Navegación principal",
+    opciones_nav,
+    index=(
+        opciones_nav.index(st.session_state["nav_principal"])
+        if st.session_state["nav_principal"] in opciones_nav
+        else 0
+    ),
+    horizontal=True,
+    label_visibility="collapsed",
+)
+
+st.session_state["nav_principal"] = nav
+
+st.divider()
 
 
 # ============================================================
